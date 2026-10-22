@@ -316,6 +316,20 @@ static void open_numpad(lv_event_t *e)
 
 /* ---- favorites list ---- */
 
+static void fill_favs(lv_obj_t *list);
+
+static void refill_async(void *list) { if (lv_obj_is_valid(list)) fill_favs(list); }
+
+/* Long press removes a favorite (the list is rebuilt after the event, not from inside it). */
+static void on_fav_long(lv_event_t *e)
+{
+    lv_obj_t *btn = lv_event_get_target_obj(e);
+    lv_obj_t *list = lv_obj_get_parent(btn);
+    favs_remove(&s_favs, lv_list_get_button_text(list, btn));
+    storage_favs_save(&s_favs);
+    lv_async_call(refill_async, list);
+}
+
 static void on_fav(lv_event_t *e)
 {
     lv_obj_t *btn = lv_event_get_target_obj(e);
@@ -326,7 +340,11 @@ static void on_fav(lv_event_t *e)
 static void fill_favs(lv_obj_t *list)
 {
     lv_obj_clean(list);
-    for (int i = 0; i < s_favs.n; i++) lv_obj_add_event_cb(lv_list_add_button(list, NULL, s_favs.code[i]), on_fav, LV_EVENT_CLICKED, NULL);
+    for (int i = 0; i < s_favs.n; i++) {
+        lv_obj_t *b = lv_list_add_button(list, NULL, s_favs.code[i]);
+        lv_obj_add_event_cb(b, on_fav, LV_EVENT_SHORT_CLICKED, NULL);   /* not after a long press */
+        lv_obj_add_event_cb(b, on_fav_long, LV_EVENT_LONG_PRESSED, NULL);
+    }
     char t[32];
     snprintf(t, sizeof t, "%s %s", LV_SYMBOL_PLUS, tr(T_NEW_STOP));
     lv_obj_add_event_cb(lv_list_add_button(list, NULL, t), open_numpad, LV_EVENT_CLICKED, NULL);
@@ -343,6 +361,11 @@ static void open_bus(lv_event_t *e)
     lv_obj_set_style_bg_opa(list, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(list, 0, 0);
     fill_favs(list);
+    lv_obj_t *hint = lv_label_create(s);
+    lv_label_set_text(hint, tr(T_HOLD_DEL));
+    lv_obj_set_style_text_color(hint, C_DIM, 0);
+    lv_obj_set_style_text_font(hint, F14, 0);
+    lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -SC(46));
     lv_obj_add_event_cb(s, on_favs_show, LV_EVENT_SCREEN_LOAD_START, list);
     push(s);
 }
@@ -539,6 +562,7 @@ static void open_nav(lv_event_t *e)
 static lv_obj_t *s_wifi_status, *s_wifi_list, *s_pw_ta, *s_pw_show_lbl;
 static char s_pick_ssid[WIFI_SSID_MAX];
 static bool s_pick_secure;
+static int s_wifi_base;   /* stack depth of Settings: connecting pops back to it, however many screens deep */
 
 /* Why a connection attempt is failing, or "" */
 static const char *wifi_problem(void)
@@ -582,7 +606,7 @@ static void on_pw_key(lv_event_t *e)
             return;
         }
         connect_to(s_pick_ssid, pw);
-        pop_n(2);   /* password and scan list: back to Settings */
+        pop_n(s_depth - s_wifi_base);   /* password, name entry and scan list: back to Settings */
     }
 }
 
@@ -610,6 +634,44 @@ static void open_password(void)
     lv_obj_align(kb, LV_ALIGN_TOP_MID, 0, SC(110));
     lv_keyboard_set_textarea(kb, s_pw_ta);
     lv_obj_add_event_cb(kb, on_pw_key, LV_EVENT_ALL, NULL);
+    push(s);
+}
+
+/* ---- a network that is not in the scan list (hidden): type its name, then the password ---- */
+
+static lv_obj_t *s_ssid_ta;
+
+static void on_ssid_key(lv_event_t *e)
+{
+    lv_event_code_t c = lv_event_get_code(e);
+    if (c == LV_EVENT_CANCEL) {
+        pop();
+    } else if (c == LV_EVENT_READY) {
+        const char *t = lv_textarea_get_text(s_ssid_ta);
+        if (!*t) {
+            lv_obj_set_style_border_color(s_ssid_ta, lv_color_hex(0xE5484D), 0);
+            return;
+        }
+        snprintf(s_pick_ssid, sizeof s_pick_ssid, "%s", t);
+        s_pick_secure = true;   /* hidden open networks are not supported */
+        open_password();
+    }
+}
+
+static void open_ssid_entry(lv_event_t *e)
+{
+    lv_obj_t *s = new_screen(tr(T_OTHER_NET));
+    s_ssid_ta = lv_textarea_create(s);
+    lv_textarea_set_one_line(s_ssid_ta, true);
+    lv_textarea_set_max_length(s_ssid_ta, WIFI_SSID_MAX - 1);
+    lv_textarea_set_placeholder_text(s_ssid_ta, tr(T_SSID));
+    lv_obj_set_size(s_ssid_ta, SC(250), SC(40));
+    lv_obj_align(s_ssid_ta, LV_ALIGN_TOP_MID, 0, SC(58));
+    lv_obj_t *kb = lv_keyboard_create(s);
+    lv_obj_set_size(kb, SC(290), SC(172));
+    lv_obj_align(kb, LV_ALIGN_TOP_MID, 0, SC(110));
+    lv_keyboard_set_textarea(kb, s_ssid_ta);
+    lv_obj_add_event_cb(kb, on_ssid_key, LV_EVENT_ALL, NULL);
     push(s);
 }
 
@@ -647,6 +709,9 @@ static void scan_job(void)
                 lv_obj_add_event_cb(b, on_ap, LV_EVENT_CLICKED, (void *)(intptr_t)aps[i].secure);
             }
         }
+        char other[40];   /* always offered: a hidden network is not in the scan */
+        snprintf(other, sizeof other, "%s %s", LV_SYMBOL_PLUS, tr(T_OTHER_NET));
+        lv_obj_add_event_cb(lv_list_add_button(s_wifi_list, NULL, other), open_ssid_entry, LV_EVENT_CLICKED, NULL);
     }
     hal_unlock();
 }
@@ -668,6 +733,7 @@ static void open_wifi(lv_event_t *e)
     lv_obj_set_style_border_width(s_wifi_list, 0, 0);
     lv_list_add_text(s_wifi_list, tr(T_SCANNING));
     run_async(scan_job);
+    s_wifi_base = s_depth;   /* Settings */
     push(s);
 }
 

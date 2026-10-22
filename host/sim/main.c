@@ -37,7 +37,7 @@ static void save_bmp(const char *path)
 }
 
 /* --taps "x,y x,y ...": scripted touches in shot mode (press 150 ms, then 600 ms for animations/jobs). */
-static int tap_x[64], tap_y[64], n_taps, tap_i;
+static int tap_x[64], tap_y[64], tap_hold[64], n_taps, tap_i;   /* hold: ms the finger stays down */
 static uint32_t tap_t0;
 
 static void tap_read(lv_indev_t *indev, lv_indev_data_t *data)
@@ -51,7 +51,7 @@ static void tap_read(lv_indev_t *indev, lv_indev_data_t *data)
     if (dt < 600) return;                      /* settle before the next touch */
     last_x = data->point.x = tap_x[tap_i];
     last_y = data->point.y = tap_y[tap_i];
-    if (dt < 900) { data->state = LV_INDEV_STATE_PRESSED; return; }
+    if (dt < 600 + (uint32_t)tap_hold[tap_i] + 150) { data->state = LV_INDEV_STATE_PRESSED; return; }
     printf("[sim] tap %d done t=%u active=%p\n", tap_i, (unsigned)lv_tick_get(), (void *)lv_screen_active());
     tap_i++;
     tap_t0 = lv_tick_get();
@@ -93,7 +93,12 @@ int main(int argc, char **argv)
     if (taps) {
         const char *p = taps;
         int x, y, n;
-        while (n_taps < 64 && sscanf(p, " %d,%d%n", &x, &y, &n) == 2) { tap_x[n_taps] = x; tap_y[n_taps++] = y; p += n; }
+        while (n_taps < 64 && sscanf(p, " %d,%d%n", &x, &y, &n) == 2) {
+            int hold = 0, m = 0;
+            p += n;
+            if (*p == ',' && sscanf(p, ",%d%n", &hold, &m) == 1) p += m;   /* x,y,hold_ms: a long press */
+            tap_x[n_taps] = x; tap_y[n_taps] = y; tap_hold[n_taps++] = hold;
+        }
         lv_indev_t *in = lv_indev_create();
         lv_indev_set_type(in, LV_INDEV_TYPE_POINTER);
         lv_indev_set_read_cb(in, tap_read);
@@ -109,7 +114,7 @@ int main(int argc, char **argv)
     if (screen) ui_sim_open(screen);
 
     if (shot) {
-        settle(getenv("PP_SIM_SETTLE_MS") ? atoi(getenv("PP_SIM_SETTLE_MS")) : (taps ? 1500 + n_taps * 1000 : 1500));
+        settle(getenv("PP_SIM_SETTLE_MS") ? atoi(getenv("PP_SIM_SETTLE_MS")) : (taps ? 1500 + n_taps * 1400 : 1500));
         if (getenv("PP_SIM_SCROLL")) { ui_sim_scroll_steps(atoi(getenv("PP_SIM_SCROLL"))); settle(300); }
         save_bmp(shot);
         return 0;

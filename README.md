@@ -152,7 +152,7 @@ python -m esptool --chip esp32s3 -p /dev/cu.usbmodem1101 -b 460800 \
 - 请求头 `AccountKey`，接口 `https://datamall2.mytransport.sg/ltaodataservice/v3/BusArrival`。Key 不对时接口返回 401。
 - **LTA 会给你两个 Key：`API Account Key`（24 位左右，base64 样式，结尾可能有 `=`）才是我们要填的；`SDK Account Key`（32 位十六进制）是给 LTA 另一个 SDK 用的，填它会得到 401。**
 - 已用真实响应验证（2026-10-22）：解析代码正确，真实响应存为 `host/tests/lta_busarrival.json`。
-- 我**没有查证**官方的频率限制；固件保守地对同一站点至少间隔 20 秒，界面每 30 秒刷新。上线前请读官方文档。
+- 官方用户指南（v6.10）写明 Bus Arrival 数据**每 20 秒更新一次**，未写具体调用限额；固件对同一站点至少间隔 20 秒，界面每 30 秒刷新。
 
 **OneMap**（步行路线）
 
@@ -160,6 +160,7 @@ python -m esptool --chip esp32s3 -p /dev/cu.usbmodem1101 -b 460800 \
 - 使用接口：`routingsvc/route`，`routeType=walk`。
 - **已用真实响应验证（2026-10-22）**：响应含 `route_summary`（总距离/时间）、`route_geometry`（精度 5 的 polyline）、`route_instructions`（每步 10 个字段，可读文字在第 10 个，路名常为空）；解析代码已按此修正，并有真实响应的测试数据 `host/tests/onemap_walk.json`。
 - 鉴权：`Authorization` 头带原始 token 或加 `Bearer` 前缀实测都返回 200，固件用前者。
+- **token 有效期 3 天**；可选在 `sdkconfig.secrets` 填 OneMap 邮箱和密码（`CONFIG_PP_ONEMAP_EMAIL/PASSWORD`），固件遇到 401 会自动续期。密码会明文编进固件，**绝不要分享烧好的固件**。续期成功响应的字段格式没用真实账号验证。
 - **token 有效期 3 天**（JWT 里 `exp` 减 `iat` 实测为 3.0 天），过期后接口会拒绝，需要重新获取并更新 `sdkconfig.secrets`。固件里的 token 是编译时写死的，没有自动续期。
 
 **配置**
@@ -180,11 +181,11 @@ rm -f sdkconfig && idf.py build
 | 主页 | 熊猫眼动画、新加坡时间、电量、Wi-Fi 状态。点击进入菜单 |
 | 返回 | 任意子界面向右滑 |
 | 自动息屏 | 空闲 15 秒先变暗，30 秒息屏（可在 `idf.py menuconfig` → Panda Pocket 里改）；按侧键或单击电源键唤醒 |
-| **公交** | 列表显示收藏站点和"+ 新增"；新增：数字键盘输入 5 位站号，满 5 位后确认键才可点；到站页显示各路线下一班/第二班的分钟数和拥挤度（seat 有座 / stand 站位 / full 拥挤）；底部"收藏/已收藏"按钮保存或取消收藏（NVS，最多 8 个）；每 30 秒自动刷新 |
+| **公交** | 列表显示收藏站点和"+ 新增"（长按收藏可删除）；新增：数字键盘输入 5 位站号，满 5 位后确认键才可点；到站页显示各路线下一班/第二班的分钟数和拥挤度（seat 有座 / stand 站位 / full 拥挤）；底部"收藏/已收藏"按钮保存或取消收藏（NVS，最多 8 个）；每 30 秒自动刷新 |
 | **导航** | 选择起点和终点（4 个预设地点：Raffles Place MRT、Esplanade、Gardens by the Bay、Orchard MRT），点出发。显示距离、预计步行分钟、转向提示（带每步距离）和折线示意图（起点 A 绿色、终点 B 红色）（起点 A 绿色、终点 B 红色）。**始终标注"路线预览，非实时定位"——本设备没有 GPS** |
 | **设置** | 亮度滑块、语言（English / 中文，即时生效）、Wi-Fi 配置、电池/Wi-Fi/接口状态 |
 
-已知限制：路线步骤文字和屏幕键盘只有英文；Mock 路线是 L 形街格估算，与真实路线有出入（实测 Raffles→Esplanade 估 1078 m / 真实 1028 m；Raffles→Gardens 估 1613 m / 真实 2044 m）；OneMap 步行路线的步骤没有路名，只有"Turn Right + 距离"；无隐藏 SSID、无企业 Wi-Fi 支持。完整清单见 [PROGRESS.md](PROGRESS.md)。
+已知限制：Wi-Fi 隐藏网络可从"其他网络"手动输入（仅加密网络）；路线步骤文字和屏幕键盘只有英文；Mock 路线是 L 形街格估算，与真实路线有出入（实测 Raffles→Esplanade 估 1078 m / 真实 1028 m；Raffles→Gardens 估 1613 m / 真实 2044 m）；OneMap 步行路线的步骤没有路名，只有"Turn Right + 距离"；无隐藏 SSID、无企业 Wi-Fi 支持。完整清单见 [PROGRESS.md](PROGRESS.md)。
 
 ## 7. 项目结构与许可证
 

@@ -14,6 +14,14 @@ menu "Panda Pocket"
         string "OneMap API token (dev only; expires, put it in sdkconfig.secrets)"
         default ""
 
+    config PP_ONEMAP_EMAIL
+        string "OneMap account email (optional: lets the device renew the 3-day token itself)"
+        default ""
+
+    config PP_ONEMAP_PASSWORD
+        string "OneMap account password (dev only, ends up in the firmware: do not share the binary)"
+        default ""
+
     config PP_WIFI_SSID
         string "Default Wi-Fi SSID (dev only)"
         default ""

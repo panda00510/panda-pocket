@@ -46,6 +46,9 @@ static const char *const S[T_COUNT][2] = {
     [T_WRONG_PW] = { "Wrong password?", "密码错误？" },
     [T_NO_AP] = { "Network not found", "找不到网络" },
     [T_CHARGING] = { "charging", "充电中" },
+    [T_OTHER_NET] = { "Other network", "其他网络" },
+    [T_SSID] = { "Network name", "网络名称" },
+    [T_HOLD_DEL] = { "Hold to remove", "长按删除" },
 };
 
 void tr_set_lang(int lang) { s_lang = lang ? 1 : 0; }

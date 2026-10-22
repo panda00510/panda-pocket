@@ -36,6 +36,12 @@ const char *nav_mock_json(void);
  * Not a real route: distance is the street-grid guess |dx|+|dy|. -1 if from == to or an index is out of range. */
 int nav_mock_route(int from, int to, nav_route_t *out);
 
+/* OneMap token endpoint (POST https://www.onemap.gov.sg/api/auth/post/getToken, JSON body):
+ * request {"email":..,"password":..}; success is expected to carry "access_token" (the JWT, valid 3 days),
+ * failure carries {"error":".."}. ponytail: the success shape is from community docs, unverified here. */
+void onemap_token_request(char *buf, size_t n, const char *email, const char *password);   /* JSON-escaped body */
+int onemap_token_parse(const char *json, char *token, size_t n);   /* 0 ok; -1 no access_token / bad JSON / too long */
+
 typedef enum { NAV_OK, NAV_ERR_NET, NAV_ERR_AUTH, NAV_ERR_HTTP, NAV_ERR_PARSE } nav_err_t;
 /* Preset places by index. Mock when PP_MOCK_MODE or no token. */
 nav_err_t nav_route(int from, int to, nav_route_t *out, bool *from_mock);

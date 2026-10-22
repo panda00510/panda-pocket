@@ -76,3 +76,25 @@ int nav_parse(const char *json, nav_route_t *out)
     cJSON_Delete(root);
     return 0;
 }
+
+void onemap_token_request(char *buf, size_t n, const char *email, const char *password)
+{
+    cJSON *o = cJSON_CreateObject();   /* cJSON escapes quotes and backslashes in the password */
+    cJSON_AddStringToObject(o, "email", email);
+    cJSON_AddStringToObject(o, "password", password);
+    char *txt = cJSON_PrintUnformatted(o);
+    snprintf(buf, n, "%s", txt ? txt : "");
+    cJSON_free(txt);
+    cJSON_Delete(o);
+}
+
+int onemap_token_parse(const char *json, char *token, size_t n)
+{
+    cJSON *root = cJSON_Parse(json);
+    if (!root) return -1;
+    const cJSON *t = cJSON_GetObjectItem(root, "access_token");
+    int rc = cJSON_IsString(t) && *t->valuestring && strlen(t->valuestring) < n ? 0 : -1;
+    if (rc == 0) strcpy(token, t->valuestring);
+    cJSON_Delete(root);
+    return rc;
+}

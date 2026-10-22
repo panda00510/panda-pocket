@@ -87,6 +87,17 @@ int main(void)
     assert(na == 3 && !strcmp(ap[0].ssid, "home") && ap[0].rssi == -50 && !strcmp(ap[1].ssid, "new") && !strcmp(ap[2].ssid, "cafe") && !ap[2].secure);
     assert(ap_list_clean(ap, 0) == 0);
 
+    /* OneMap token request/response helpers */
+    {
+        char body[256], tok[64];
+        onemap_token_request(body, sizeof body, "me@example.com", "p\"a\\ss");   /* quote and backslash must be escaped */
+        assert(!strcmp(body, "{\"email\":\"me@example.com\",\"password\":\"p\\\"a\\\\ss\"}"));
+        assert(onemap_token_parse("{\"access_token\":\"abc.def.ghi\",\"expiry_timestamp\":\"1792913223\"}", tok, sizeof tok) == 0 && !strcmp(tok, "abc.def.ghi"));
+        assert(onemap_token_parse("{\"error\":\"Your password does not fulfil\"}", tok, sizeof tok) == -1);
+        assert(onemap_token_parse("{\"access_token\":\"0123456789012345678901234567890123456789012345678901234567890123456789\"}", tok, sizeof tok) == -1);   /* too long */
+        assert(onemap_token_parse("not json", tok, sizeof tok) == -1);
+    }
+
     /* every UI string exists in both languages (a missing one would print NULL or crash on the device) */
     for (int lang = 0; lang < 2; lang++) {
         tr_set_lang(lang);
