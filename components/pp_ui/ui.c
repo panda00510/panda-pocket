@@ -353,6 +353,28 @@ static const char *place_name(int i) { return tr_lang() ? NAV_PLACES[i].name_zh 
 static lv_obj_t *s_nav_label;
 static lv_obj_t *s_nav_line;
 static lv_point_precise_t s_nav_pts[NAV_MAX_PTS];
+static lv_obj_t *s_nav_a, *s_nav_b;   /* start / end markers, on the screen above the line */
+#define MARK_D SC(20)
+
+static lv_obj_t *route_marker(lv_obj_t *screen, const char *letter, uint32_t color)
+{
+    lv_obj_t *m = lv_obj_create(screen);
+    lv_obj_remove_style_all(m);
+    lv_obj_remove_flag(m, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_size(m, MARK_D, MARK_D);
+    lv_obj_set_style_radius(m, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(m, lv_color_hex(color), 0);
+    lv_obj_set_style_bg_opa(m, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(m, 2, 0);
+    lv_obj_set_style_border_color(m, lv_color_hex(0xF2F2F2), 0);
+    lv_obj_add_flag(m, LV_OBJ_FLAG_HIDDEN);   /* until the route is known */
+    lv_obj_t *l = lv_label_create(m);
+    lv_label_set_text(l, letter);
+    lv_obj_set_style_text_font(l, F14, 0);
+    lv_obj_set_style_text_color(l, lv_color_hex(0x101010), 0);
+    lv_obj_center(l);
+    return m;
+}
 
 static void nav_job(void)
 {
@@ -390,6 +412,12 @@ static void nav_job(void)
                 s_nav_pts[i].y = (lv_value_precise_t)((la1 - r.pts[i].lat) / span * SC(115));
             }
             lv_line_set_points(s_nav_line, s_nav_pts, r.n_pts);
+            lv_obj_update_layout(s_nav_line);   /* it was just resized and re-centred: read where it really is */
+            int ox = lv_obj_get_x(s_nav_line) - MARK_D / 2, oy = lv_obj_get_y(s_nav_line) - MARK_D / 2;
+            lv_obj_set_pos(s_nav_a, ox + (int)s_nav_pts[0].x, oy + (int)s_nav_pts[0].y);
+            lv_obj_set_pos(s_nav_b, ox + (int)s_nav_pts[r.n_pts - 1].x, oy + (int)s_nav_pts[r.n_pts - 1].y);
+            lv_obj_remove_flag(s_nav_a, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_remove_flag(s_nav_b, LV_OBJ_FLAG_HIDDEN);
         }
         hal_unlock();
     }
@@ -408,6 +436,8 @@ static void open_route(lv_event_t *e)
     lv_obj_set_style_line_width(s_nav_line, 4, 0);
     lv_obj_set_style_line_color(s_nav_line, lv_color_hex(0x4CC38A), 0);
     lv_obj_align(s_nav_line, LV_ALIGN_CENTER, 0, -SC(20));   /* the line is as big as the route */
+    s_nav_a = route_marker(s, "A", 0x4CC38A);
+    s_nav_b = route_marker(s, "B", 0xE5484D);
     s_nav_label = lv_label_create(s);
     lv_label_set_text(s_nav_label, tr(T_LOADING));
     lv_obj_set_style_text_font(s_nav_label, F14, 0);

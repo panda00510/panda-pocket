@@ -33,6 +33,7 @@ brew install cmake ninja sdl2
 make -C host sim-run                 # 打开窗口：鼠标=触摸，向右拖动=返回
 make -C host sim-shots               # 无窗口截图到 host/build/shot_*.bmp
 host/build/sim/sim --lang zh         # 中文界面
+PP_SIM_ROUTE_JSON=host/tests/onemap_walk.json host/build/sim/sim --screen route   # 用真实 OneMap 响应看路线图
 make -C host sim-check               # ASan/UBSan：所有界面中英文各跑一遍，崩溃/越界即失败
 host/build/sim/sim --shot out.bmp --taps "233,233 233,150"   # 脚本化点击（像素坐标）
 ```
@@ -179,7 +180,7 @@ rm -f sdkconfig && idf.py build
 | 返回 | 任意子界面向右滑 |
 | 自动息屏 | 空闲 15 秒先变暗，30 秒息屏（可在 `idf.py menuconfig` → Panda Pocket 里改）；按侧键或单击电源键唤醒 |
 | **公交** | 列表显示收藏站点和"+ 新增"；新增：数字键盘输入 5 位站号，满 5 位后确认键才可点；到站页显示各路线下一班/第二班的分钟数和拥挤度（seat 有座 / stand 站位 / full 拥挤）；底部"收藏/已收藏"按钮保存或取消收藏（NVS，最多 8 个）；每 30 秒自动刷新 |
-| **导航** | 选择起点和终点（4 个预设地点：Raffles Place MRT、Esplanade、Gardens by the Bay、Orchard MRT），点出发。显示距离、预计步行分钟、转向提示和折线示意图。**始终标注"路线预览，非实时定位"——本设备没有 GPS** |
+| **导航** | 选择起点和终点（4 个预设地点：Raffles Place MRT、Esplanade、Gardens by the Bay、Orchard MRT），点出发。显示距离、预计步行分钟、转向提示和折线示意图（起点 A 绿色、终点 B 红色）。**始终标注"路线预览，非实时定位"——本设备没有 GPS** |
 | **设置** | 亮度滑块、语言（English / 中文，即时生效）、Wi-Fi 配置、电池/Wi-Fi/接口状态 |
 
 已知限制：路线步骤文字和屏幕键盘只有英文；Mock 路线是 L 形街格估算，与真实路线有出入（实测 Raffles→Esplanade 估 1078 m / 真实 1028 m；Raffles→Gardens 估 1613 m / 真实 2044 m）；OneMap 步行路线的步骤没有路名，只有"Turn Right + 距离"；无隐藏 SSID、无企业 Wi-Fi 支持。完整清单见 [PROGRESS.md](PROGRESS.md)。

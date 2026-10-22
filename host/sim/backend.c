@@ -76,6 +76,16 @@ bus_err_t bus_fetch(const char *stop, bus_arrivals_t *out, bool *from_mock)
 nav_err_t nav_route(int from, int to, nav_route_t *out, bool *from_mock)
 {
     usleep(300000);
+    const char *file = getenv("PP_SIM_ROUTE_JSON");   /* a captured OneMap response (e.g. host/tests/onemap_walk.json) */
+    if (file) {
+        FILE *f = fopen(file, "rb");
+        static char buf[32768];
+        size_t n = f ? fread(buf, 1, sizeof buf - 1, f) : 0;
+        if (f) fclose(f);
+        buf[n] = 0;
+        *from_mock = false;
+        return nav_parse(buf, out) ? NAV_ERR_PARSE : NAV_OK;
+    }
     *from_mock = true;
     return nav_mock_route(from, to, out) ? NAV_ERR_PARSE : NAV_OK;
 }
