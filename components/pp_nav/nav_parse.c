@@ -5,11 +5,15 @@
 #include "cJSON.h"
 #include "nav.h"
 
+/* Coordinates from OneMap's search API (2026-10-22), which showed the earlier hand-estimated ones could be 300+ m off. */
 const nav_place_t NAV_PLACES[] = {
-    { "raffles",  "Raffles Place MRT",   "莱佛士坊地铁站", 1.2840f, 103.8515f },
-    { "esplanade","Esplanade",           "滨海艺术中心",   1.2897f, 103.8555f },
-    { "gardens",  "Gardens by the Bay",  "滨海湾花园",     1.2816f, 103.8636f },
-    { "orchard",  "Orchard MRT",         "乌节地铁站",     1.3040f, 103.8318f },
+    { "raffles",  "Raffles Place MRT",  "莱佛士坊地铁站", 1.28413f, 103.85146f },
+    { "esplanade","Esplanade",          "滨海艺术中心",   1.29021f, 103.85557f },
+    { "mbs",      "Marina Bay Sands",   "滨海湾金沙",     1.28399f, 103.85945f },
+    { "gardens",  "Gardens by the Bay", "滨海湾花园",     1.28459f, 103.86466f },
+    { "bugis",    "Bugis MRT",          "武吉士地铁站",   1.30047f, 103.85571f },
+    { "orchard",  "Orchard MRT",        "乌节地铁站",     1.30398f, 103.83225f },
+    { "harbour",  "HarbourFront MRT",   "港湾地铁站",     1.26531f, 103.82056f },
 };
 const int NAV_N_PLACES = sizeof NAV_PLACES / sizeof *NAV_PLACES;
 
