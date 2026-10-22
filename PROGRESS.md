@@ -23,7 +23,7 @@
 - Mock Mode(`CONFIG_PP_MOCK_MODE`，默认开)。关闭 Mock 时 Kconfig 不定义该宏，曾导致编译失败，已用 `pp_config.h` 修复；Mock 开/关两种配置都编译通过。
 
 ## 未完成
-- Bus 拥挤度目前只用 seat/stand/full 文字，无颜色/图标；收藏上限 8 个，满了只提示不覆盖；暂无长按删除（在到站页点"已收藏"取消）。
+- Bus 拥挤度：seat 绿 / stand 黄 / full 红，按单元格着色（文字保留，色盲可读）；模拟器截图检查过，真屏色彩未验证；收藏上限 8 个，满了只提示不覆盖；暂无长按删除（在到站页点"已收藏"取消）。
 - Navigation：已有起点/终点选择（4 个预设地点）；路线图只是折线示意，没有地名/起终点标记；预设地点太少，没有自定义/收藏地点。
 - Settings：Wi-Fi：不支持隐藏 SSID/手动输入网络名，不支持企业网络(WPA-Enterprise)和需要网页登录的开放网络；密码输错没有"连接失败"提示（只会一直重试，状态显示 Connecting）；NVS 里密码是明文；1.75 寸屏上键盘键位偏小，长密码输入费劲——后续可考虑手机配网(SoftAP/BLE)。
 - 中文：路线步骤文字（来自 OneMap/Mock）仍是英文；键盘只有英文；中文字体只含界面用到的约 90 个汉字，加新中文文案后要跑 `tools/gen_cjk_font.sh <NotoSansCJKsc-Regular.otf>` 重新生成（需 node；字体需自行下载，没进仓库）；OFL 许可证全文在 `components/pp_ui/fonts/OFL.txt`。

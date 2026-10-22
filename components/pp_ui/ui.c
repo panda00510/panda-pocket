@@ -129,7 +129,23 @@ static void label_set(lv_obj_t *l, const char *txt)
 static favs_t s_favs;
 static char s_stop[BUS_STOP_LEN];   /* stop shown on the arrivals screen */
 static lv_obj_t *s_bus_head, *s_bus_table, *s_save_label;
-/* " seat" / " stand" / " full", translated; TODO colour/icons */
+static uint8_t s_cell_load[5][3];   /* bus_load_t per table cell (columns 1 and 2), for the text colour */
+
+/* Colour the load text per cell: green seats, amber standing, red limited. The words stay, for colour-blind users. */
+static void on_bus_draw(lv_event_t *e)
+{
+    lv_draw_task_t *t = lv_event_get_draw_task(e);
+    lv_draw_dsc_base_t *base = lv_draw_task_get_draw_dsc(t);
+    lv_draw_label_dsc_t *ld = lv_draw_task_get_label_dsc(t);
+    if (!ld || base->part != LV_PART_ITEMS || base->id1 >= 5 || base->id2 < 1 || base->id2 > 2) return;
+    switch (s_cell_load[base->id1][base->id2]) {
+    case BUS_LOAD_SEATS: ld->color = lv_color_hex(0x4CC38A); break;
+    case BUS_LOAD_STANDING: ld->color = lv_color_hex(0xFFB020); break;
+    case BUS_LOAD_LIMITED: ld->color = lv_color_hex(0xE5484D); break;
+    default: break;
+    }
+}
+/* " seat" / " stand" / " full", translated */
 static const char *load_word(int load)
 {
     static char b[2][16];   /* two cells are formatted per call site; reused immediately */
@@ -159,6 +175,7 @@ static void bus_job(void)
             for (int i = 0; i < rows; i++) {
                 lv_table_set_cell_value(s_bus_table, i, 0, a.svc[i].service);
                 for (int j = 0; j < 2; j++) {
+                    s_cell_load[i][1 + j] = a.svc[i].eta_min[j] < 0 ? BUS_LOAD_UNKNOWN : a.svc[i].load[j];
                     int v = a.svc[i].eta_min[j];
                     if (v < 0) lv_table_set_cell_value(s_bus_table, i, 1 + j, "-");
                     else if (v == 0) lv_table_set_cell_value_fmt(s_bus_table, i, 1 + j, "%s%s", tr(T_ARR), load_word(a.svc[i].load[j]));
@@ -216,6 +233,9 @@ static void show_arrivals(const char *stop, bool replace_top)
     lv_obj_set_style_text_color(s_bus_table, C_FG, LV_PART_ITEMS);
     lv_obj_set_style_text_font(s_bus_table, F16, LV_PART_ITEMS);
     lv_obj_align(s_bus_table, LV_ALIGN_TOP_MID, 0, SC(88));
+    memset(s_cell_load, 0, sizeof s_cell_load);
+    lv_obj_add_flag(s_bus_table, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
+    lv_obj_add_event_cb(s_bus_table, on_bus_draw, LV_EVENT_DRAW_TASK_ADDED, NULL);
 
     lv_obj_t *b = lv_button_create(s);
     lv_obj_set_size(b, SC(130), SC(38));
