@@ -20,4 +20,7 @@ void hal_panel_sleep(bool sleep);
 void hal_screen_off(void);
 /* Panel back on. Idempotent; no-op while a low-power wake is already doing it. Brightness is the caller's job. */
 void hal_screen_on(void);
+/* USB power present / battery charging. Leaves the charge current at the board default (M5 docs: 185 mA;
+ * M5's factory firmware raises it to 425 mA, about 0.94C on the 450 mAh cell, which is not done here). */
+esp_err_t hal_read_charge(bool *usb, bool *charging);
 esp_err_t hal_read_battery(int *mv, int *pct);

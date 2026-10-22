@@ -33,6 +33,7 @@ brew install cmake ninja sdl2
 make -C host sim-run                 # 打开窗口：鼠标=触摸，向右拖动=返回
 make -C host sim-shots               # 无窗口截图到 host/build/shot_*.bmp
 host/build/sim/sim --lang zh         # 中文界面
+PP_SIM_ERR=auth|net|empty / PP_SIM_WIFI_ERR=auth / PP_SIM_CHARGING=1 host/build/sim/sim ...   # 模拟各种错误和充电状态
 PP_SIM_ROUTE_JSON=host/tests/onemap_walk.json host/build/sim/sim --screen route   # 用真实 OneMap 响应看路线图
 make -C host sim-check               # ASan/UBSan：所有界面中英文各跑一遍，崩溃/越界即失败
 host/build/sim/sim --shot out.bmp --taps "233,233 233,150"   # 脚本化点击（像素坐标）

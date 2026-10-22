@@ -33,7 +33,7 @@ bus_err_t bus_fetch(const char *stop, bus_arrivals_t *out, bool *from_mock)
         snprintf(url, sizeof url, "https://datamall2.mytransport.sg/ltaodataservice/v3/BusArrival?BusStopCode=%s", stop);
         int status;
         pp_http_err_t e = pp_http_get(url, "AccountKey", CONFIG_PP_LTA_ACCOUNT_KEY, s_buf, RESP_MAX, &status);
-        if (e == PP_HTTP_ERR_STATUS) return BUS_ERR_HTTP;
+        if (e == PP_HTTP_ERR_STATUS) return status == 401 || status == 403 ? BUS_ERR_AUTH : BUS_ERR_HTTP;   /* LTA: wrong key = 401 */
         if (e != PP_HTTP_OK) return BUS_ERR_NET;
     }
     if (bus_parse(s_buf, now, out) != 0) return BUS_ERR_PARSE;

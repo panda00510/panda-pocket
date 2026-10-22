@@ -166,7 +166,10 @@ static void bus_job(void)
     if (!hal_lock(1000)) return;
     if (lv_obj_is_valid(s_bus_head) && lv_obj_is_valid(s_bus_table)) {
         if (e != BUS_OK) {
-            lv_label_set_text(s_bus_head, e == BUS_ERR_NET ? tr(T_ERR_NET) : tr(T_ERR_API));
+            lv_label_set_text(s_bus_head, tr(e == BUS_ERR_NET ? T_ERR_NET : e == BUS_ERR_AUTH ? T_ERR_KEY : T_ERR_API));
+            lv_table_set_row_count(s_bus_table, 0);
+        } else if (a.n == 0) {   /* LTA answers 200 with an empty list for a stop that does not exist */
+            lv_label_set_text(s_bus_head, tr(T_NO_BUSES));
             lv_table_set_row_count(s_bus_table, 0);
         } else {
             lv_label_set_text(s_bus_head, mock ? tr(T_MOCK) : tr(T_LIVE));
@@ -350,7 +353,7 @@ static int s_from = 0, s_to = 1;   /* indexes into NAV_PLACES */
 
 static const char *place_name(int i) { return tr_lang() ? NAV_PLACES[i].name_zh : NAV_PLACES[i].name_en; }
 
-static lv_obj_t *s_nav_label;
+static lv_obj_t *s_nav_label, *s_nav_steps;   /* summary text; scrollable list of every step */
 static lv_obj_t *s_nav_line;
 static lv_point_precise_t s_nav_pts[NAV_MAX_PTS];
 static lv_obj_t *s_nav_a, *s_nav_b;   /* start / end markers, on the screen above the line */
@@ -380,20 +383,23 @@ static void nav_job(void)
 {
     static nav_route_t r;
     bool mock = false;
-    char out[400];
+    char out[160];
     int from = s_from, to = s_to;
     nav_err_t e = nav_route(from, to, &r, &mock);
     if (e != NAV_OK) {
-        label_set(s_nav_label, e == NAV_ERR_NET ? tr(T_ERR_NET) : tr(T_ERR_API));
+        label_set(s_nav_label, tr(e == NAV_ERR_NET ? T_ERR_NET : e == NAV_ERR_AUTH ? T_ERR_TOKEN : T_ERR_API));
         return;
     }
-    int o = snprintf(out, sizeof out, "%s > %s\n%d m  %d %s  %s\n", place_name(from), place_name(to), r.dist_m,
-                     (r.time_s + 30) / 60, tr(T_MIN), mock ? tr(T_MOCK) : tr(T_LIVE));
-    for (int i = 0; i < r.n_steps && i < 3 && o < (int)sizeof out; i++) {
-        o += snprintf(out + o, sizeof out - o, "%d. %s", i + 1, r.steps[i].text);
-        if (r.steps[i].dist_m > 0 && o < (int)sizeof out) o += snprintf(out + o, sizeof out - o, "  %d m", r.steps[i].dist_m);
-        if (o < (int)sizeof out) o += snprintf(out + o, sizeof out - o, "\n");
-    }   /* OneMap walk steps carry no road names */
+    snprintf(out, sizeof out, "%s > %s\n%d m  %d %s  %s", place_name(from), place_name(to), r.dist_m,
+             (r.time_s + 30) / 60, tr(T_MIN), mock ? tr(T_MOCK) : tr(T_LIVE));
+    static char steps[NAV_MAX_STEPS * 80];   /* every step; the list scrolls */
+    int o = 0;
+    for (int i = 0; i < r.n_steps && o < (int)sizeof steps; i++) {
+        o += snprintf(steps + o, sizeof steps - o, "%d. %s", i + 1, r.steps[i].text);
+        if (r.steps[i].dist_m > 0 && o < (int)sizeof steps) o += snprintf(steps + o, sizeof steps - o, "  %d m", r.steps[i].dist_m);   /* OneMap walk steps carry no road names */
+        if (o < (int)sizeof steps) o += snprintf(steps + o, sizeof steps - o, "\n");
+    }
+    if (o > 0 && o <= (int)sizeof steps && steps[o - 1] == '\n') steps[o - 1] = 0;   /* no blank line to scroll to */
 
     /* Schematic: fit points into a 200 px box, lat flipped to screen y. */
     float la0 = r.pts[0].lat, la1 = la0, lo0 = r.pts[0].lng, lo1 = lo0;
@@ -422,6 +428,7 @@ static void nav_job(void)
         hal_unlock();
     }
     label_set(s_nav_label, out);
+    label_set(lv_obj_get_child(s_nav_steps, 0), steps);
 }
 
 static void open_route(lv_event_t *e)
@@ -442,7 +449,18 @@ static void open_route(lv_event_t *e)
     lv_label_set_text(s_nav_label, tr(T_LOADING));
     lv_obj_set_style_text_font(s_nav_label, F14, 0);
     lv_obj_set_style_text_align(s_nav_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(s_nav_label, LV_ALIGN_BOTTOM_MID, 0, -SC(50));
+    lv_obj_align(s_nav_label, LV_ALIGN_BOTTOM_MID, 0, -SC(106));
+    /* The steps: three lines visible, drag up/down for the rest (a sideways swipe still goes back). */
+    s_nav_steps = lv_obj_create(s);
+    lv_obj_remove_style_all(s_nav_steps);
+    lv_obj_set_size(s_nav_steps, SC(240), 4 * lv_font_get_line_height(F14));   /* exactly four lines: no half line */
+    lv_obj_align(s_nav_steps, LV_ALIGN_BOTTOM_MID, 0, -SC(52));
+    lv_obj_set_scroll_dir(s_nav_steps, LV_DIR_VER);
+    lv_obj_t *sl = lv_label_create(s_nav_steps);
+    lv_label_set_text(sl, "");
+    lv_obj_set_width(sl, SC(240));
+    lv_obj_set_style_text_font(sl, F14, 0);
+    lv_obj_set_style_text_align(sl, LV_TEXT_ALIGN_CENTER, 0);
     run_async(nav_job);
     push(s);
 }
@@ -522,10 +540,17 @@ static lv_obj_t *s_wifi_status, *s_wifi_list, *s_pw_ta, *s_pw_show_lbl;
 static char s_pick_ssid[WIFI_SSID_MAX];
 static bool s_pick_secure;
 
+/* Why a connection attempt is failing, or "" */
+static const char *wifi_problem(void)
+{
+    if (wifi_state() == WIFI_UP) return "";
+    return wifi_last_error() == WIFI_ERR_AUTH ? tr(T_WRONG_PW) : wifi_last_error() == WIFI_ERR_NO_AP ? tr(T_NO_AP) : "";
+}
+
 static void wifi_status_text(char *b, size_t n)
 {
     if (!wifi_ssid()[0]) snprintf(b, n, "%s", tr(T_NOT_SET));
-    else snprintf(b, n, "%s: %s", wifi_state() == WIFI_UP ? tr(T_CONNECTED) : tr(T_CONNECTING), wifi_ssid());
+    else snprintf(b, n, "%s: %s\n%s", wifi_state() == WIFI_UP ? tr(T_CONNECTED) : tr(T_CONNECTING), wifi_ssid(), wifi_problem());
 }
 
 static void connect_to(const char *ssid, const char *pass)
@@ -632,7 +657,7 @@ static void open_wifi(lv_event_t *e)
     s_wifi_status = lv_label_create(s);
     lv_obj_set_style_text_color(s_wifi_status, C_DIM, 0);
     lv_obj_set_style_text_font(s_wifi_status, F14, 0);
-    char t[64];
+    char t[128];
     wifi_status_text(t, sizeof t);
     lv_label_set_text(s_wifi_status, t);
     lv_obj_align(s_wifi_status, LV_ALIGN_TOP_MID, 0, SC(62));
@@ -653,10 +678,12 @@ static lv_obj_t *s_status_label;
 static void status_text(char *b, size_t n)
 {
     int mv = 0, pct = -1;
+    bool usb = false, charging = false;
     hal_read_battery(&mv, &pct);
+    hal_read_charge(&usb, &charging);
     const char *wifi = wifi_state() == WIFI_UP ? tr(T_CONNECTED) : wifi_state() == WIFI_CONNECTING ? tr(T_CONNECTING) : tr(T_NOT_SET);
     bool mock = PP_BUS_USES_MOCK || PP_NAV_USES_MOCK;   /* any feature still on fixtures */
-    snprintf(b, n, "%s %d%% (%d mV)\n%s %s\n%s %s", tr(T_BATTERY), pct, mv, tr(T_WIFI), wifi, tr(T_API), mock ? tr(T_MOCK) : tr(T_LIVE));
+    snprintf(b, n, "%s %d%% (%d mV) %s\n%s %s %s\n%s %s", tr(T_BATTERY), pct, mv, charging ? tr(T_CHARGING) : "", tr(T_WIFI), wifi, wifi_problem(), tr(T_API), mock ? tr(T_MOCK) : tr(T_LIVE));
 }
 
 static void on_brightness(lv_event_t *e)
@@ -802,8 +829,10 @@ static void home_tick(lv_timer_t *t)
     }
     lv_label_set_text(s_time, b);
     if (hal_read_battery(&mv, &pct) == ESP_OK) {
-        if (pct < 0) snprintf(b, sizeof b, "USB");
-        else snprintf(b, sizeof b, "%d%%", pct);
+        bool usb = false, charging = false;
+        hal_read_charge(&usb, &charging);
+        if (pct < 0) snprintf(b, sizeof b, "USB");   /* no cell fitted */
+        else snprintf(b, sizeof b, "%s%d%%", charging ? LV_SYMBOL_CHARGE " " : "", pct);
         lv_label_set_text(s_batt, b);
     }
     lv_label_set_text(s_wifi, wifi_state() == WIFI_UP ? LV_SYMBOL_WIFI : wifi_state() == WIFI_CONNECTING ? LV_SYMBOL_REFRESH : "-");
@@ -880,6 +909,14 @@ void ui_start(pp_settings_t *s)
 }
 
 #ifdef PP_SIM
+/* Scroll the route step list by dy pixels (what a finger drag does) and report how far it can go. */
+void ui_sim_scroll_steps(int dy)
+{
+    if (!s_nav_steps || !lv_obj_is_valid(s_nav_steps)) return;
+    lv_obj_scroll_by(s_nav_steps, 0, -dy, LV_ANIM_OFF);
+    printf("[sim] steps scrolled: top=%d, still below=%d px\n", (int)lv_obj_get_scroll_top(s_nav_steps), (int)lv_obj_get_scroll_bottom(s_nav_steps));
+}
+
 /* "menu" | "bus" | "numpad[:digits]" | "arrivals[:stop]" | "nav" | "route" | "places" | "settings" */
 void ui_sim_open(const char *name)
 {

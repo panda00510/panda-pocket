@@ -40,6 +40,12 @@ static const char *const S[T_COUNT][2] = {
     [T_CROWDED] = { "full", "拥挤" },
     [T_LANG_NAME] = { "English", "中文" },
     [T_OPEN] = { "open", "开放" },
+    [T_ERR_KEY] = { "Key rejected", "密钥无效" },
+    [T_ERR_TOKEN] = { "Token expired", "令牌已过期" },
+    [T_NO_BUSES] = { "No buses here", "该站暂无班车" },
+    [T_WRONG_PW] = { "Wrong password?", "密码错误？" },
+    [T_NO_AP] = { "Network not found", "找不到网络" },
+    [T_CHARGING] = { "charging", "充电中" },
 };
 
 void tr_set_lang(int lang) { s_lang = lang ? 1 : 0; }

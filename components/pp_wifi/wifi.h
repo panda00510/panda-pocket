@@ -4,12 +4,15 @@
 #include "ap_list.h"
 
 typedef enum { WIFI_NONE, WIFI_CONNECTING, WIFI_UP } wifi_state_t;
+/* Why the last attempt failed (cleared on connect). Authentication problems almost always mean a wrong password. */
+typedef enum { WIFI_ERR_NONE, WIFI_ERR_AUTH, WIFI_ERR_NO_AP, WIFI_ERR_OTHER } wifi_error_t;
 
 /* Starts the driver (always, so scanning works) and connects if ssid is non-empty. */
 void wifi_start(const char *ssid, const char *pass);
 /* New credentials: connects now, auto-reconnects from then on. Caller persists them. */
 void wifi_reconfigure(const char *ssid, const char *pass);
 wifi_state_t wifi_state(void);
+wifi_error_t wifi_last_error(void);
 const char *wifi_ssid(void);   /* configured network, "" if none */
 bool wifi_time_valid(void);    /* SNTP has set the clock */
 

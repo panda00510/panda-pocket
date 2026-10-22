@@ -6,6 +6,7 @@
 
 #include "bus.h"
 #include "favs.h"
+#include "i18n.h"
 #include "ap_list.h"
 #include "nav.h"
 
@@ -85,6 +86,13 @@ int main(void)
     int na = ap_list_clean(ap, 5);
     assert(na == 3 && !strcmp(ap[0].ssid, "home") && ap[0].rssi == -50 && !strcmp(ap[1].ssid, "new") && !strcmp(ap[2].ssid, "cafe") && !ap[2].secure);
     assert(ap_list_clean(ap, 0) == 0);
+
+    /* every UI string exists in both languages (a missing one would print NULL or crash on the device) */
+    for (int lang = 0; lang < 2; lang++) {
+        tr_set_lang(lang);
+        for (int id = 0; id < T_COUNT; id++) assert(tr((tr_id_t)id) && *tr((tr_id_t)id));
+    }
+    tr_set_lang(0);
 
     /* favorites */
     favs_t f = { 0 };

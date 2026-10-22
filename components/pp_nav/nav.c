@@ -22,8 +22,10 @@ nav_err_t nav_route(int from, int to, nav_route_t *out, bool *from_mock)
              NAV_PLACES[from].lat, NAV_PLACES[from].lng, NAV_PLACES[to].lat, NAV_PLACES[to].lng);
     int status;
     pp_http_err_t e = pp_http_get(url, "Authorization", CONFIG_PP_ONEMAP_TOKEN, buf, RESP_MAX, &status);
+    /* OneMap: a bad or expired token is 401 {"message":"Unauthorized"} (the token lives 3 days) */
     nav_err_t r = e == PP_HTTP_OK ? (nav_parse(buf, out) ? NAV_ERR_PARSE : NAV_OK)
-                : e == PP_HTTP_ERR_STATUS ? NAV_ERR_HTTP : NAV_ERR_NET;
+                : e == PP_HTTP_ERR_STATUS ? (status == 401 || status == 403 ? NAV_ERR_AUTH : NAV_ERR_HTTP)
+                : NAV_ERR_NET;
     free(buf);
     return r;
 }

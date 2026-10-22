@@ -45,9 +45,15 @@ void hal_screen_off(void)
     pthread_detach(th);
 }
 void hal_screen_on(void) { printf("[sim] screen on\n"); }
+esp_err_t hal_read_charge(bool *usb, bool *charging) { *usb = *charging = getenv("PP_SIM_CHARGING") != NULL; return ESP_OK; }
 esp_err_t hal_read_battery(int *mv, int *pct) { *pct = s_batt_pct; *mv = 3300 + s_batt_pct * 9; return ESP_OK; }
 
-wifi_state_t wifi_state(void) { return WIFI_UP; }
+wifi_state_t wifi_state(void) { return getenv("PP_SIM_WIFI_ERR") ? WIFI_CONNECTING : WIFI_UP; }
+wifi_error_t wifi_last_error(void)
+{
+    const char *e = getenv("PP_SIM_WIFI_ERR");   /* auth | noap */
+    return !e ? WIFI_ERR_NONE : !strcmp(e, "auth") ? WIFI_ERR_AUTH : WIFI_ERR_NO_AP;
+}
 bool wifi_time_valid(void) { return true; }
 void wifi_start(const char *s, const char *p) {}
 static char s_sim_ssid[WIFI_SSID_MAX] = "";
@@ -67,6 +73,10 @@ bus_err_t bus_fetch(const char *stop, bus_arrivals_t *out, bool *from_mock)
     static char js[2048];
     if (!bus_stop_valid(stop)) return BUS_ERR_STOP;
     usleep(300000);   /* feel like a network call */
+    const char *err = getenv("PP_SIM_ERR");   /* net | auth | empty */
+    if (err && !strcmp(err, "net")) return BUS_ERR_NET;
+    if (err && !strcmp(err, "auth")) return BUS_ERR_AUTH;
+    if (err && !strcmp(err, "empty")) { memset(out, 0, sizeof *out); snprintf(out->stop, sizeof out->stop, "%s", stop); *from_mock = false; return BUS_OK; }
     time_t now = time(NULL);
     bus_mock_json(js, sizeof js, stop, now);
     *from_mock = true;
@@ -76,6 +86,9 @@ bus_err_t bus_fetch(const char *stop, bus_arrivals_t *out, bool *from_mock)
 nav_err_t nav_route(int from, int to, nav_route_t *out, bool *from_mock)
 {
     usleep(300000);
+    const char *err = getenv("PP_SIM_ERR");
+    if (err && !strcmp(err, "net")) return NAV_ERR_NET;
+    if (err && !strcmp(err, "auth")) return NAV_ERR_AUTH;
     const char *file = getenv("PP_SIM_ROUTE_JSON");   /* a captured OneMap response (e.g. host/tests/onemap_walk.json) */
     if (file) {
         FILE *f = fopen(file, "rb");

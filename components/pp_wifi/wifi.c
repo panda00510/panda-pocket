@@ -13,6 +13,7 @@
 
 static const char *TAG = "wifi";
 static volatile wifi_state_t s_state = WIFI_NONE;
+static volatile wifi_error_t s_err = WIFI_ERR_NONE;
 static TimerHandle_t s_retry;
 static int s_backoff_s = 1;
 static bool s_inited, s_sntp, s_configured;
@@ -27,11 +28,25 @@ static void on_event(void *arg, esp_event_base_t base, int32_t id, void *data)
         if (s_configured) esp_wifi_connect();
     } else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
         if (!s_configured || s_scanning) return;
+        switch (((wifi_event_sta_disconnected_t *)data)->reason) {   /* ponytail: mapping from IDF docs, unverified on hardware */
+        case WIFI_REASON_AUTH_FAIL:
+        case WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT:
+        case WIFI_REASON_HANDSHAKE_TIMEOUT:
+        case WIFI_REASON_MIC_FAILURE:
+            s_err = WIFI_ERR_AUTH;
+            break;
+        case WIFI_REASON_NO_AP_FOUND:
+            s_err = WIFI_ERR_NO_AP;
+            break;
+        default:
+            s_err = WIFI_ERR_OTHER;
+        }
         s_state = WIFI_CONNECTING;
         xTimerChangePeriod(s_retry, pdMS_TO_TICKS(s_backoff_s * 1000), 0);   /* 1,2,4..30 s */
         s_backoff_s = s_backoff_s < 16 ? s_backoff_s * 2 : 30;
     } else if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP) {
         s_state = WIFI_UP;
+        s_err = WIFI_ERR_NONE;
         s_backoff_s = 1;
         if (!s_sntp) {
             setenv("TZ", "SGT-8", 1);   /* Singapore, no DST */
@@ -76,6 +91,7 @@ void wifi_reconfigure(const char *ssid, const char *pass)
     if (!s_inited) { wifi_start(ssid, pass); return; }
     apply(ssid, pass);
     s_backoff_s = 1;
+    s_err = WIFI_ERR_NONE;
     s_state = s_configured ? WIFI_CONNECTING : WIFI_NONE;
     xTimerStop(s_retry, 0);
     if (!s_configured) { esp_wifi_disconnect(); return; }
@@ -84,6 +100,7 @@ void wifi_reconfigure(const char *ssid, const char *pass)
 }
 
 wifi_state_t wifi_state(void) { return s_state; }
+wifi_error_t wifi_last_error(void) { return s_err; }
 const char *wifi_ssid(void) { return s_ssid; }
 bool wifi_time_valid(void) { return time(NULL) > 1735689600; }   /* after 2025-01-01 */
 

@@ -59,6 +59,11 @@ static const char *TAG = "hal";
 #define PMIC_PWR_5V_OUT 0x08       /* 5 V boost to the Grove port */
 #define PMIC_I2C_CFG 0x09          /* 0: no I2C idle sleep */
 #define PMIC_WDT 0x0A              /* 0: watchdog off */
+#define PMIC_GPIO_MODE 0x10           /* 1 = output */
+#define PMIC_GPIO_IN 0x12
+#define PMIC_CHG_STAT BIT(2)          /* PM1 GPIO2: low while charging */
+#define PMIC_FUNC_GPIO2_MASK 0x30
+#define PMIC_VIN_MV 0x24              /* USB, 16-bit little-endian millivolts */
 #define PMIC_VBAT_MV 0x22          /* 16-bit little-endian millivolts */
 #define PMIC_BTN_CFG1 0x49
 #define PMIC_SINGLE_RESET_DISABLE BIT(0)
@@ -180,6 +185,9 @@ esp_err_t board_init(void)
     ESP_RETURN_ON_ERROR(reg_write(s_pmic, PMIC_I2C_CFG, (uint8_t[]){ 0 }, 1), TAG, "pmic i2c sleep off");
     ESP_RETURN_ON_ERROR(reg_write(s_pmic, PMIC_WDT, (uint8_t[]){ 0 }, 1), TAG, "pmic watchdog off");
     ESP_RETURN_ON_ERROR(pmic_update(PMIC_PWR_CFG, PMIC_PWR_5V_OUT, 0), TAG, "5 V out off");
+    /* CHG_STAT (PM1 GPIO2) is read as a plain input; CHG_PROG (GPIO3) is left alone, so charging stays at the default current. */
+    ESP_RETURN_ON_ERROR(pmic_update(PMIC_GPIO_FUNC0, PMIC_FUNC_GPIO2_MASK, 0), TAG, "pmic gpio2 function");
+    ESP_RETURN_ON_ERROR(pmic_update(PMIC_GPIO_MODE, PMIC_CHG_STAT, 0), TAG, "pmic gpio2 input");
     ESP_RETURN_ON_ERROR(pmic_update(PMIC_BTN_CFG1, PMIC_SINGLE_RESET_DISABLE, PMIC_SINGLE_RESET_DISABLE), TAG, "power key");
 
     /* Motor and amp off; audio, OLED rail and both resets high; then reset panel + touch together. */
@@ -329,6 +337,16 @@ void hal_panel_sleep(bool sleep)
 {
     pp_lcd_bands_run(send_sleep, &sleep);
     vTaskDelay(pdMS_TO_TICKS(120));
+}
+
+esp_err_t hal_read_charge(bool *usb, bool *charging)
+{
+    uint8_t v[2], in;
+    ESP_RETURN_ON_ERROR(reg_read(s_pmic, PMIC_VIN_MV, v, sizeof v), TAG, "pmic vin");
+    ESP_RETURN_ON_ERROR(reg_read(s_pmic, PMIC_GPIO_IN, &in, 1), TAG, "pmic gpio in");
+    *usb = (v[0] | v[1] << 8) > 4000;
+    *charging = *usb && !(in & PMIC_CHG_STAT);
+    return ESP_OK;
 }
 
 esp_err_t hal_read_battery(int *mv, int *pct)

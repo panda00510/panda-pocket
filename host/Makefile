@@ -1,10 +1,10 @@
 # Host-side checks and mock demo: no ESP-IDF, just cc + git (fetches a pinned cJSON).
 CJSON_TAG := v1.7.18
 B := build
-INC := -I../components/pp_wifi -I../components/pp_bus -I../components/pp_nav -I../components/pp_storage -I$(B)/cJSON
+INC := -I../components/pp_i18n -I../components/pp_wifi -I../components/pp_bus -I../components/pp_nav -I../components/pp_storage -I$(B)/cJSON
 SRC := ../components/pp_bus/bus_parse.c ../components/pp_bus/bus_mock.c \
        ../components/pp_nav/nav_parse.c ../components/pp_nav/nav_mock.c \
-       ../components/pp_storage/favs.c ../components/pp_wifi/ap_list.c $(B)/cJSON/cJSON.c
+       ../components/pp_storage/favs.c ../components/pp_wifi/ap_list.c ../components/pp_i18n/i18n.c $(B)/cJSON/cJSON.c
 CFLAGS := -std=c11 -Wall -Wextra -Wno-unused-parameter -D_GNU_SOURCE
 
 $(B)/cJSON/cJSON.c:
@@ -18,6 +18,7 @@ $(B)/demo: demo.c $(SRC)
 
 test: $(B)/test_logic
 	$(B)/test_logic
+	python3 -I ../tools/check_cjk_font.py
 demo: $(B)/demo
 	$(B)/demo
 clean:

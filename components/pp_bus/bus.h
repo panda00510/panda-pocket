@@ -33,5 +33,5 @@ void bus_mock_json(char *buf, size_t n, const char *stop, time_t now);
 /* App-level entry: real API if a key is configured and mock is off, else mock.
  * Rate-limited: returns the cached result if called again within BUS_MIN_REFRESH_S. */
 #define BUS_MIN_REFRESH_S 20
-typedef enum { BUS_OK, BUS_ERR_STOP, BUS_ERR_NET, BUS_ERR_HTTP, BUS_ERR_PARSE } bus_err_t;
+typedef enum { BUS_OK, BUS_ERR_STOP, BUS_ERR_NET, BUS_ERR_AUTH, BUS_ERR_HTTP, BUS_ERR_PARSE } bus_err_t;
 bus_err_t bus_fetch(const char *stop, bus_arrivals_t *out, bool *from_mock);

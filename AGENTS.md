@@ -10,7 +10,7 @@ ESP-IDF + LVGL 固件，目标板 M5Stack StopWatch（C152）。进度与阻塞�
 - `host/sim`：SDL2 桌面预览（`make -C host sim-run`），改 `pp_ui` 后先在这里看；`#ifdef PP_SIM` 的钩子只给模拟器用。
 - `host/`：`make -C host test` 跑解析/收藏的断言，`make -C host demo` 打印 Mock 输出。
 
-- 中文文案只写在 `pp_i18n/i18n.c` 和 `pp_nav/nav_parse.c`（字体生成脚本只扫这两个文件）；新增汉字后重跑 `tools/gen_cjk_font.sh`。
+- 中文文案只写在 `pp_i18n/i18n.c` 和 `pp_nav/nav_parse.c`（字体生成脚本只扫这两个文件）；新增汉字后重跑 `tools/gen_cjk_font.sh`（`make -C host test` 会检查缺字）。
 
 ## 规则
 

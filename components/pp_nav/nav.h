@@ -36,6 +36,6 @@ const char *nav_mock_json(void);
  * Not a real route: distance is the street-grid guess |dx|+|dy|. -1 if from == to or an index is out of range. */
 int nav_mock_route(int from, int to, nav_route_t *out);
 
-typedef enum { NAV_OK, NAV_ERR_NET, NAV_ERR_HTTP, NAV_ERR_PARSE } nav_err_t;
+typedef enum { NAV_OK, NAV_ERR_NET, NAV_ERR_AUTH, NAV_ERR_HTTP, NAV_ERR_PARSE } nav_err_t;
 /* Preset places by index. Mock when PP_MOCK_MODE or no token. */
 nav_err_t nav_route(int from, int to, nav_route_t *out, bool *from_mock);

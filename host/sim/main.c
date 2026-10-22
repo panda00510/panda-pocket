@@ -110,6 +110,7 @@ int main(int argc, char **argv)
 
     if (shot) {
         settle(getenv("PP_SIM_SETTLE_MS") ? atoi(getenv("PP_SIM_SETTLE_MS")) : (taps ? 1500 + n_taps * 1000 : 1500));
+        if (getenv("PP_SIM_SCROLL")) { ui_sim_scroll_steps(atoi(getenv("PP_SIM_SCROLL"))); settle(300); }
         save_bmp(shot);
         return 0;
     }
