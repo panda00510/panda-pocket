@@ -42,6 +42,21 @@ int main(void)
     nav_pt_t few[3];
     assert(nav_polyline_decode("_xyF{nzxRoFkHgJoFkHgEoF{@", few, 3) == 3 && few[2].lng > 103.855f);
 
+    /* a real LTA BusArrival v3 response (captured 2026-10-22 15:48 SGT, stop 83139) */
+    {
+        FILE *f = fopen("tests/lta_busarrival.json", "rb");
+        assert(f);
+        static char big[16384];
+        size_t n = fread(big, 1, sizeof big - 1, f);
+        big[n] = 0;
+        fclose(f);
+        static bus_arrivals_t real;
+        time_t at = 1792655310;   /* 2026-10-22T15:48:30+08:00 */
+        assert(bus_parse(big, at, &real) == 0 && !strcmp(real.stop, "83139") && real.n == 3);
+        assert(!strcmp(real.svc[0].service, "15") && real.svc[0].eta_min[0] == 2 && real.svc[0].eta_min[1] == 9);
+        assert(real.svc[1].eta_min[0] == 0 && real.svc[0].load[0] == BUS_LOAD_SEATS);
+    }
+
     /* a real OneMap walking response (captured 2026-10-22, Raffles Place -> Esplanade) */
     {
         FILE *f = fopen("tests/onemap_walk.json", "rb");

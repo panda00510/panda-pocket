@@ -146,7 +146,9 @@ python -m esptool --chip esp32s3 -p /dev/cu.usbmodem1101 -b 460800 \
 
 - 在 <https://datamall.lta.gov.sg/> 注册并申请 AccountKey（免费，需审批）。
 - 使用接口：`BusArrival v3`，请求头 `AccountKey`。
-- 请求头 `AccountKey`，接口 `https://datamall2.mytransport.sg/ltaodataservice/v3/BusArrival`。Key 未通过时接口返回 401（见 PROGRESS.md）。
+- 请求头 `AccountKey`，接口 `https://datamall2.mytransport.sg/ltaodataservice/v3/BusArrival`。Key 不对时接口返回 401。
+- **LTA 会给你两个 Key：`API Account Key`（24 位左右，base64 样式，结尾可能有 `=`）才是我们要填的；`SDK Account Key`（32 位十六进制）是给 LTA 另一个 SDK 用的，填它会得到 401。**
+- 已用真实响应验证（2026-10-22）：解析代码正确，真实响应存为 `host/tests/lta_busarrival.json`。
 - 我**没有查证**官方的频率限制；固件保守地对同一站点至少间隔 20 秒，界面每 30 秒刷新。上线前请读官方文档。
 
 **OneMap**（步行路线）
