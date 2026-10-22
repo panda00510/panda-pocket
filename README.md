@@ -41,6 +41,8 @@ host/build/sim/sim --shot out.bmp --taps "233,233 233,150"   # 脚本化点击�
 
 模拟器**不能**验证：真实触摸手感、帧率、AMOLED 色彩、PSRAM/内存压力、Wi-Fi、NVS、低功耗。
 
+> 每次推送会自动跑 GitHub Actions（`.github/workflows/ci.yml`）：逻辑测试、字体检查、模拟器 ASan/UBSan 扫描、默认配置的固件编译。CI 只证明"能编译、测试通过"，不代表上过板。
+
 ## 2. 构建固件
 
 **环境**（已在 macOS / Apple Silicon 上验证编译）
