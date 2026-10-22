@@ -6,7 +6,7 @@
 #include "bus.h"
 #include "esp_log.h"
 #include "pp_http.h"
-#include "sdkconfig.h"
+#include "pp_config.h"
 
 #define RESP_MAX 16384   /* 20-odd services is ~10 KB */
 
@@ -24,7 +24,7 @@ bus_err_t bus_fetch(const char *stop, bus_arrivals_t *out, bool *from_mock)
     }
     if (!s_buf && !(s_buf = malloc(RESP_MAX))) return BUS_ERR_NET;
 
-    bool mock = CONFIG_PP_MOCK_MODE || CONFIG_PP_LTA_ACCOUNT_KEY[0] == 0;
+    bool mock = PP_BUS_USES_MOCK;
     *from_mock = mock;
     if (mock) {
         bus_mock_json(s_buf, RESP_MAX, stop, now);

@@ -36,11 +36,25 @@ int main(void)
     assert(nav_parse(nav_mock_json(), &r) == 0);
     assert(r.dist_m == 1030 && r.time_s == 780 && r.n_steps == 4 && r.n_pts == 5);
     assert(r.pts[0].lat > 1.283f && r.pts[0].lat < 1.285f && r.pts[4].lng > 103.855f && r.pts[4].lng < 103.856f);
-    assert(!strcmp(r.steps[1].text, "Turn right Cecil Street") && r.steps[3].dist_m == 0);
+    assert(!strcmp(r.steps[0].text, "Head North East Raffles Place") && !strcmp(r.steps[1].text, "Turn Right Cecil Street") && r.steps[3].dist_m == 0);
     assert(nav_parse("{}", &r) == -1);
     /* thinning keeps the destination */
     nav_pt_t few[3];
     assert(nav_polyline_decode("_xyF{nzxRoFkHgJoFkHgEoF{@", few, 3) == 3 && few[2].lng > 103.855f);
+
+    /* a real OneMap walking response (captured 2026-10-22, Raffles Place -> Esplanade) */
+    {
+        FILE *f = fopen("tests/onemap_walk.json", "rb");
+        assert(f);
+        static char big[16384];
+        size_t n = fread(big, 1, sizeof big - 1, f);
+        big[n] = 0;
+        fclose(f);
+        static nav_route_t real;
+        assert(nav_parse(big, &real) == 0 && real.dist_m == 1028 && real.time_s == 740 && real.n_steps == 14);
+        assert(!strcmp(real.steps[0].text, "Head North") && !strcmp(real.steps[1].text, "Turn Right"));
+        assert(real.n_pts > 20 && real.pts[0].lat > 1.283f && real.pts[0].lat < 1.285f);
+    }
 
     /* mock route between presets: L-shaped estimate, symmetric, rejects from == to */
     nav_route_t m, m2;

@@ -64,10 +64,12 @@ int nav_parse(const char *json, nav_route_t *out)
     cJSON_ArrayForEach(st, ins) {
         if (out->n_steps >= NAV_MAX_STEPS) break;
         const cJSON *act = cJSON_GetArrayItem(st, 0), *road = cJSON_GetArrayItem(st, 1), *d = cJSON_GetArrayItem(st, 2);
+        const cJSON *txt = cJSON_GetArrayItem(st, 9);   /* readable text, e.g. "Turn Right"; [0] is only the bare type */
         if (!cJSON_IsString(act)) continue;
         nav_step_t *o = &out->steps[out->n_steps++];
-        snprintf(o->text, sizeof o->text, "%s%s%s", act->valuestring, cJSON_IsString(road) && *road->valuestring ? " " : "",
-                 cJSON_IsString(road) ? road->valuestring : "");
+        const char *base = cJSON_IsString(txt) && *txt->valuestring ? txt->valuestring : act->valuestring;
+        bool has_road = cJSON_IsString(road) && *road->valuestring;
+        snprintf(o->text, sizeof o->text, "%s%s%s", base, has_road ? " " : "", has_road ? road->valuestring : "");
         o->dist_m = (int)cJSON_GetNumberValue(d);
     }
     if (cJSON_IsString(geo)) out->n_pts = nav_polyline_decode(geo->valuestring, out->pts, NAV_MAX_PTS);

@@ -17,7 +17,7 @@
 - `hal_board`：**目标板已从 Waveshare 1.85C 改为 M5Stack StopWatch(C152)**。CO5300 AMOLED(QSPI, 466×466, x 偏移 6)、CST820 触摸、M5PM1 电池、M5IOE1 供电/复位；移植自 Muse，引脚与寄存器已对照 M5 官方 UserDemo 核对一致。剥离了音频、按键、IMU、震动、电源键中断、轨道断电。
 - `pp_storage`(NVS 设置+收藏)、`pp_wifi`(自动重连退避 + SNTP/SGT)、`pp_http`(HTTPS GET，10s 超时)、`pp_i18n`、`pp_bus/bus.c`、`pp_nav/nav.c`。
 - `pp_ui`：Home(动态熊猫眼、时间/电量/Wi-Fi)、点击进菜单、右滑返回、自动息屏、Bus/Navigate/Settings 简版界面。LVGL 9.5 API 已通过编译，但界面实际效果未见过。
-- Mock Mode(`CONFIG_PP_MOCK_MODE`，默认开)。
+- Mock Mode(`CONFIG_PP_MOCK_MODE`，默认开)。关闭 Mock 时 Kconfig 不定义该宏，曾导致编译失败，已用 `pp_config.h` 修复；Mock 开/关两种配置都编译通过。
 
 ## 未完成
 - Bus 拥挤度目前只用 seat/stand/full 文字，无颜色/图标；收藏上限 8 个，满了只提示不覆盖；暂无长按删除（在到站页点"已收藏"取消）。
@@ -31,7 +31,7 @@
 
 ## 待核实 / 风险
 - **LTA 接口频率限制**未查证，现保守设为同站点 ≥20 s 缓存、UI 每 30 s 刷新；上线前读官方文档。
-- **OneMap 响应字段**(`route_summary`/`route_instructions`/`route_geometry`) 与鉴权头格式是按文档记忆写的，没有真实响应验证；有 token 后第一件事是抓一次真实响应对比。
+- OneMap：已用真实响应验证（2026-10-22）。字段结构与我的猜测一致，但步骤文字拼法是错的，已修（可读文字在第 10 个字段）；鉴权头原始 token / Bearer 都可用；token 寿命 3 天，没有自动续期（固件里是编译时写死的 token，过期后导航会报错，需重编译或做 token 刷新/后端代理）。
 - M5 官方示例与 Muse 的 StopWatch 代码均为 2026 年的版本，板子较新，社区验证少。
 - 导航预设地点坐标为大致值。
 - 电量曲线沿用 Muse 的二次拟合（M5 官方用 3.3–4.2 V 线性），需实测；暂未读充电状态(CHG_STAT)与 USB(VIN)，没电池时只能靠 mv<2500 判断显示 "USB"。
@@ -39,4 +39,5 @@
 - ESP-IDF 6.0 起 cJSON 为托管组件 `espressif/cjson`，已按此声明。
 
 ## 阻塞
+- **LTA DataMall Key 被拒（HTTP 401）**：对 BusArrival v3 和 BusStops 两个接口用同一个 Key 都是 401，说明是 Key 本身没被接受，不是地址问题。该 Key 是 32 位纯十六进制；我印象里 LTA 的 AccountKey 不是这个格式（未核实），可能填错了类型的 Key，或尚未激活。公交仍只能用 Mock。待用户核对邮件里的 AccountKey。
 - 无硬件：编译已过，下一步做桌面模拟器看界面；烧录与运行验证等硬件。

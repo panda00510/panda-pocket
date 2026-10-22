@@ -4,13 +4,13 @@
 
 #include "nav.h"
 #include "pp_http.h"
-#include "sdkconfig.h"
+#include "pp_config.h"
 
 #define RESP_MAX 24576
 
 nav_err_t nav_route(int from, int to, nav_route_t *out, bool *from_mock)
 {
-    bool mock = CONFIG_PP_MOCK_MODE || CONFIG_PP_ONEMAP_TOKEN[0] == 0;
+    bool mock = PP_NAV_USES_MOCK;
     *from_mock = mock;
     if (mock) return nav_mock_route(from, to, out) ? NAV_ERR_PARSE : NAV_OK;
 

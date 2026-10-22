@@ -10,10 +10,10 @@ const char *nav_mock_json(void)
 {
     return "{\"status\":0,\"route_summary\":{\"total_time\":780,\"total_distance\":1030},"
            "\"route_geometry\":\"_xyF{nzxRoFkHgJoFkHgEoF{@\","
-           "\"route_instructions\":[[\"Head northeast\",\"Raffles Place\",190,\"1.2840,103.8515\"],"
-           "[\"Turn right\",\"Cecil Street\",260,\"1.2870,103.8542\"],"
-           "[\"Turn left\",\"Fullerton Road\",420,\"1.2885,103.8552\"],"
-           "[\"Arrive\",\"Esplanade\",0,\"1.2897,103.8555\"]]}";
+           "\"route_instructions\":[[\"Head\",\"Raffles Place\",190,\"1.2840,103.8515\",150,\"190m\",\"North East\",\"North\",\"walking\",\"Head North East\"],"
+           "[\"Right\",\"Cecil Street\",260,\"1.2870,103.8542\",210,\"260m\",\"East\",\"North East\",\"walking\",\"Turn Right\"],"
+           "[\"Left\",\"Fullerton Road\",420,\"1.2885,103.8552\",330,\"420m\",\"North\",\"East\",\"walking\",\"Turn Left\"],"
+           "[\"Left\",\"\",0,\"1.2897,103.8555\",0,\"0m\",\"North\",\"North\",\"walking\",\"You Have Arrived\"]]}";
 }
 
 int nav_mock_route(int from, int to, nav_route_t *out)

@@ -146,13 +146,16 @@ python -m esptool --chip esp32s3 -p /dev/cu.usbmodem1101 -b 460800 \
 
 - 在 <https://datamall.lta.gov.sg/> 注册并申请 AccountKey（免费，需审批）。
 - 使用接口：`BusArrival v3`，请求头 `AccountKey`。
+- 请求头 `AccountKey`，接口 `https://datamall2.mytransport.sg/ltaodataservice/v3/BusArrival`。Key 未通过时接口返回 401（见 PROGRESS.md）。
 - 我**没有查证**官方的频率限制；固件保守地对同一站点至少间隔 20 秒，界面每 30 秒刷新。上线前请读官方文档。
 
 **OneMap**（步行路线）
 
 - 在 <https://www.onemap.gov.sg/apidocs/> 注册，用邮箱和密码换取 token（token 会过期，约 3 天）。
 - 使用接口：`routingsvc/route`，`routeType=walk`。
-- **响应字段（`route_summary` / `route_instructions` / `route_geometry`）和鉴权头格式是按文档记忆写的，没有用真实响应验证。** 拿到 token 后第一件事是抓一次真实响应与 `nav_parse.c` 对照。
+- **已用真实响应验证（2026-10-22）**：响应含 `route_summary`（总距离/时间）、`route_geometry`（精度 5 的 polyline）、`route_instructions`（每步 10 个字段，可读文字在第 10 个，路名常为空）；解析代码已按此修正，并有真实响应的测试数据 `host/tests/onemap_walk.json`。
+- 鉴权：`Authorization` 头带原始 token 或加 `Bearer` 前缀实测都返回 200，固件用前者。
+- **token 有效期 3 天**（JWT 里 `exp` 减 `iat` 实测为 3.0 天），过期后接口会拒绝，需要重新获取并更新 `sdkconfig.secrets`。固件里的 token 是编译时写死的，没有自动续期。
 
 **配置**
 

@@ -15,6 +15,7 @@
 #include "hal_board.h"
 #include "i18n.h"
 #include "nav.h"
+#include "pp_config.h"
 #include "sdkconfig.h"
 #include "ui.h"
 #include "wifi.h"
@@ -600,7 +601,7 @@ static void status_text(char *b, size_t n)
     int mv = 0, pct = -1;
     hal_read_battery(&mv, &pct);
     const char *wifi = wifi_state() == WIFI_UP ? tr(T_CONNECTED) : wifi_state() == WIFI_CONNECTING ? tr(T_CONNECTING) : tr(T_NOT_SET);
-    bool mock = CONFIG_PP_MOCK_MODE || !CONFIG_PP_LTA_ACCOUNT_KEY[0];
+    bool mock = PP_BUS_USES_MOCK || PP_NAV_USES_MOCK;   /* any feature still on fixtures */
     snprintf(b, n, "%s %d%% (%d mV)\n%s %s\n%s %s", tr(T_BATTERY), pct, mv, tr(T_WIFI), wifi, tr(T_API), mock ? tr(T_MOCK) : tr(T_LIVE));
 }
 

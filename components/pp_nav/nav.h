@@ -6,7 +6,7 @@
 #define NAV_MAX_PTS 128
 
 typedef struct { float lat, lng; } nav_pt_t;
-typedef struct { char text[48]; int dist_m; } nav_step_t;
+typedef struct { char text[64]; int dist_m; } nav_step_t;
 
 typedef struct {
     int dist_m, time_s;
@@ -22,7 +22,8 @@ extern const nav_place_t NAV_PLACES[];
 extern const int NAV_N_PLACES;
 
 /* OneMap routingsvc walk response -> out. 0 ok, -1 bad JSON / no route.
- * ponytail: field layout follows OneMap docs from memory; verify against a live response. */
+ * Verified against a live response (host/tests/onemap_walk.json): each instruction is
+ * [type, road, dist_m, "lat,lng", secs, "28m", dir, heading, mode, "Turn Right"]; road is often "". */
 int nav_parse(const char *json, nav_route_t *out);
 
 /* Google-style encoded polyline (1e5) -> pts, thinned to max. Returns count. */

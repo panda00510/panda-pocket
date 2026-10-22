@@ -11,7 +11,7 @@ add_executable(sim main.c backend.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../build/cJSON/cJSON.c)
 target_compile_definitions(sim PRIVATE PP_SIM LV_CONF_PATH="${LV_CONF_PATH}" _GNU_SOURCE)
 target_include_directories(sim PRIVATE shim ${C}/hal_board ${C}/pp_ui ${C}/pp_bus ${C}/pp_nav ${C}/pp_storage
-    ${C}/pp_wifi ${C}/pp_i18n ${CMAKE_CURRENT_SOURCE_DIR}/../build/cJSON ${SDL2_INCLUDE_DIRS})
+    ${C}/pp_wifi ${C}/pp_i18n ${C}/pp_http ${CMAKE_CURRENT_SOURCE_DIR}/../build/cJSON ${SDL2_INCLUDE_DIRS})
 target_link_libraries(sim PRIVATE lvgl SDL2::SDL2 m)
 # LVGL's SDL driver includes <SDL2/SDL.h>, so the parent of SDL2's include dir must be visible to it.
 list(GET SDL2_INCLUDE_DIRS 0 SDL_INC)
