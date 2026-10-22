@@ -1,0 +1,5 @@
+dependencies:
+  idf: ">=5.5"
+  lvgl/lvgl: "9.5.0"
+  espressif/esp_lvgl_adapter: "0.6.4"
+  espressif/esp_lcd_co5300: "^2.2.0"

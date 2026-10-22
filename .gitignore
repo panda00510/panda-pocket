@@ -1,0 +1,6 @@
+build/
+sdkconfig
+sdkconfig.old
+sdkconfig.secrets
+managed_components/
+host/build/

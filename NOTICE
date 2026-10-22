@@ -1,0 +1,21 @@
+Panda Pocket
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Portions derived from Muse Gadget SDK (https://github.com/facebookincubator/muse-gadget-sdk),
+Copyright (c) Meta Platforms, Inc. and affiliates, Apache-2.0:
+  components/hal_board/hal_board_stopwatch.c (from esp32/components/muse/boards/board_m5stack_stopwatch.c)
+  components/hal_board/pp_lcd_bands.[ch]     (from esp32/components/muse/boards/muse_lcd_bands.[ch])
+  components/hal_board/pp_lv_mem.c           (from esp32/components/muse/muse_lv_mem.c)
+Modified: renamed, Muse state/audio/UI/BLE dependencies removed. Files keep their original notices.
+
+Pins, register maps and the panel init sequence were cross-checked against M5Stack's
+M5StopWatch-UserDemo (https://github.com/m5stack/M5StopWatch-UserDemo), MIT,
+Copyright (c) 2026 M5Stack Technology CO LTD. No code was copied verbatim from it.
+
+Not used: Muse avatar/Jollybot artwork, Muse token/account/Link/BLE code.
+
+components/pp_ui/fonts/pp_font_cjk_*.c: generated subsets of Noto Sans CJK SC
+(https://github.com/notofonts/noto-cjk), whose font metadata reads "Copyright 2014-2021 Adobe
+(http://www.adobe.com/). Noto is a trademark of Google Inc."; the family is released under the SIL Open
+Font License 1.1 (https://openfontlicense.org). The OFL text itself is not bundled yet: add it before any
+release. Regenerate the subsets with tools/gen_cjk_font.sh.
