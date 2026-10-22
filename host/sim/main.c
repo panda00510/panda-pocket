@@ -89,6 +89,10 @@ int main(int argc, char **argv)
     tzset();
     lv_init();
     lv_display_t *d = lv_sdl_window_create(HAL_LCD_RES, HAL_LCD_RES);
+    if (!d) {
+        fprintf(stderr, "sim: could not create the SDL window (no display? try SDL_VIDEODRIVER=dummy)\n");
+        return 1;
+    }
     lv_sdl_window_set_title(d, "Panda Pocket (sim)");
     if (taps) {
         const char *p = taps;
