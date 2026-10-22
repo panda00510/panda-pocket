@@ -162,7 +162,7 @@ python -m esptool --chip esp32s3 -p /dev/cu.usbmodem1101 -b 460800 \
 - 使用接口：`routingsvc/route`，`routeType=walk`。
 - **已用真实响应验证（2026-10-22）**：响应含 `route_summary`（总距离/时间）、`route_geometry`（精度 5 的 polyline）、`route_instructions`（每步 10 个字段，可读文字在第 10 个，路名常为空）；解析代码已按此修正，并有真实响应的测试数据 `host/tests/onemap_walk.json`。
 - 鉴权：`Authorization` 头带原始 token 或加 `Bearer` 前缀实测都返回 200，固件用前者。
-- **token 有效期 3 天**；可选在 `sdkconfig.secrets` 填 OneMap 邮箱和密码（`CONFIG_PP_ONEMAP_EMAIL/PASSWORD`），固件遇到 401 会自动续期。密码会明文编进固件，**绝不要分享烧好的固件**。续期成功响应的字段格式没用真实账号验证。
+- **token 有效期 3 天**；可选在 `sdkconfig.secrets` 填 OneMap 邮箱和密码（`CONFIG_PP_ONEMAP_EMAIL/PASSWORD`），固件遇到 401 会自动续期。密码会明文编进固件，**绝不要分享烧好的固件**。续期接口已用真实账号实测（2026-10-22）：返回 `{"access_token":<JWT>,"expiry_timestamp":"<秒>"}`，用返回的 token 请求路线成功；token 未过期时服务器会直接返回同一个 token。
 - **token 有效期 3 天**（JWT 里 `exp` 减 `iat` 实测为 3.0 天），过期后接口会拒绝，需要重新获取并更新 `sdkconfig.secrets`。固件里的 token 是编译时写死的，没有自动续期。
 
 **配置**
