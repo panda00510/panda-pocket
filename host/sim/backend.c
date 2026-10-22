@@ -20,12 +20,8 @@ void sim_lvgl_unlock(void) { pthread_mutex_unlock(&s_lvgl); }
 
 bool hal_lock(int timeout_ms)
 {
-    if (timeout_ms < 0) { pthread_mutex_lock(&s_lvgl); return true; }
-    for (int waited = 0; waited <= timeout_ms; waited++) {   /* macOS has no pthread_mutex_timedlock */
-        if (!pthread_mutex_trylock(&s_lvgl)) return true;
-        usleep(1000);
-    }
-    return false;
+    pthread_mutex_lock(&s_lvgl);   /* blocking: polling with trylock starved under load (macOS has no timedlock) */
+    return true;
 }
 void hal_unlock(void) { pthread_mutex_unlock(&s_lvgl); }
 void hal_set_brightness(int pct) { printf("[sim] brightness %d%%\n", pct); }

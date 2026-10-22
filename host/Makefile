@@ -36,3 +36,12 @@ sim-shots: sim
 	SDL_VIDEODRIVER=dummy $(B)/sim/sim --shot $(B)/shot_home.bmp
 	for s in menu bus nav settings; do SDL_VIDEODRIVER=dummy $(B)/sim/sim --shot $(B)/shot_$$s.bmp --screen $$s; done
 .PHONY: sim sim-run sim-shots
+
+# Regression guard: ASan/UBSan build of the simulator, every screen in both languages. Fails on any crash/overflow.
+sim-check: $(B)/lvgl $(B)/cJSON/cJSON.c
+	cmake -S sim -B $(B)/sim_asan -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+	    -DCMAKE_C_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -g" >/dev/null && ninja -C $(B)/sim_asan
+	set -e; for l in en zh; do for s in menu bus numpad:831 arrivals nav places route settings wifi password; do \
+	    SDL_VIDEODRIVER=dummy PP_SIM_FAVS=83139 $(B)/sim_asan/sim --shot $(B)/check.bmp --lang $$l --screen $$s >/dev/null; \
+	done; done; echo "sim-check ok"
+.PHONY: sim-check

@@ -33,6 +33,7 @@ brew install cmake ninja sdl2
 make -C host sim-run                 # 打开窗口：鼠标=触摸，向右拖动=返回
 make -C host sim-shots               # 无窗口截图到 host/build/shot_*.bmp
 host/build/sim/sim --lang zh         # 中文界面
+make -C host sim-check               # ASan/UBSan：所有界面中英文各跑一遍，崩溃/越界即失败
 host/build/sim/sim --shot out.bmp --taps "233,233 233,150"   # 脚本化点击（像素坐标）
 ```
 
@@ -181,7 +182,7 @@ rm -f sdkconfig && idf.py build
 | **导航** | 选择起点和终点（4 个预设地点：Raffles Place MRT、Esplanade、Gardens by the Bay、Orchard MRT），点出发。显示距离、预计步行分钟、转向提示和折线示意图。**始终标注"路线预览，非实时定位"——本设备没有 GPS** |
 | **设置** | 亮度滑块、语言（English / 中文，即时生效）、Wi-Fi 配置、电池/Wi-Fi/接口状态 |
 
-已知限制：路线步骤文字和屏幕键盘只有英文；Mock 路线是 L 形街格估算，比真实步行路线偏长；拥挤度无颜色/图标；无隐藏 SSID、无企业 Wi-Fi 支持。完整清单见 [PROGRESS.md](PROGRESS.md)。
+已知限制：路线步骤文字和屏幕键盘只有英文；Mock 路线是 L 形街格估算，与真实路线有出入（实测 Raffles→Esplanade 估 1078 m / 真实 1028 m；Raffles→Gardens 估 1613 m / 真实 2044 m）；OneMap 步行路线的步骤没有路名，只有"Turn Right + 距离"；拥挤度无颜色/图标；无隐藏 SSID、无企业 Wi-Fi 支持。完整清单见 [PROGRESS.md](PROGRESS.md)。
 
 ## 7. 项目结构与许可证
 

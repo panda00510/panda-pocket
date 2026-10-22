@@ -328,7 +328,7 @@ static void open_bus(lv_event_t *e)
 
 static int s_from = 0, s_to = 1;   /* indexes into NAV_PLACES */
 
-static const char *place_name(int i) { return tr_lang() ? NAV_PLACES[i].name_zh : place_name(i); }
+static const char *place_name(int i) { return tr_lang() ? NAV_PLACES[i].name_zh : NAV_PLACES[i].name_en; }
 
 static lv_obj_t *s_nav_label;
 static lv_obj_t *s_nav_line;
@@ -347,7 +347,11 @@ static void nav_job(void)
     }
     int o = snprintf(out, sizeof out, "%s > %s\n%d m  %d %s  %s\n", place_name(from), place_name(to), r.dist_m,
                      (r.time_s + 30) / 60, tr(T_MIN), mock ? tr(T_MOCK) : tr(T_LIVE));
-    for (int i = 0; i < r.n_steps && i < 3 && o < (int)sizeof out; i++) o += snprintf(out + o, sizeof out - o, "%d. %s\n", i + 1, r.steps[i].text);
+    for (int i = 0; i < r.n_steps && i < 3 && o < (int)sizeof out; i++) {
+        o += snprintf(out + o, sizeof out - o, "%d. %s", i + 1, r.steps[i].text);
+        if (r.steps[i].dist_m > 0 && o < (int)sizeof out) o += snprintf(out + o, sizeof out - o, "  %d m", r.steps[i].dist_m);
+        if (o < (int)sizeof out) o += snprintf(out + o, sizeof out - o, "\n");
+    }   /* OneMap walk steps carry no road names */
 
     /* Schematic: fit points into a 200 px box, lat flipped to screen y. */
     float la0 = r.pts[0].lat, la1 = la0, lo0 = r.pts[0].lng, lo1 = lo0;

@@ -70,7 +70,7 @@ static void settle(int ms)
         sim_lvgl_lock();
         lv_timer_handler();
         sim_lvgl_unlock();
-        usleep(10000);
+        usleep(10000);   /* long enough for a waiting worker thread to take the lock */
         lv_tick_inc(10);
     }
 }
@@ -109,7 +109,7 @@ int main(int argc, char **argv)
     if (screen) ui_sim_open(screen);
 
     if (shot) {
-        settle(taps ? 1500 + n_taps * 1000 : 1500);
+        settle(getenv("PP_SIM_SETTLE_MS") ? atoi(getenv("PP_SIM_SETTLE_MS")) : (taps ? 1500 + n_taps * 1000 : 1500));
         save_bmp(shot);
         return 0;
     }
