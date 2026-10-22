@@ -16,6 +16,6 @@ Not used: Muse avatar/Jollybot artwork, Muse token/account/Link/BLE code.
 
 components/pp_ui/fonts/pp_font_cjk_*.c: generated subsets of Noto Sans CJK SC
 (https://github.com/notofonts/noto-cjk), whose font metadata reads "Copyright 2014-2021 Adobe
-(http://www.adobe.com/). Noto is a trademark of Google Inc."; the family is released under the SIL Open
-Font License 1.1 (https://openfontlicense.org). The OFL text itself is not bundled yet: add it before any
-release. Regenerate the subsets with tools/gen_cjk_font.sh.
+(http://www.adobe.com/). Noto is a trademark of Google Inc."; released under the SIL Open Font
+License 1.1. The full license text is in components/pp_ui/fonts/OFL.txt. Regenerate the subsets with
+tools/gen_cjk_font.sh.
