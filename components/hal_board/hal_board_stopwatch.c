@@ -16,6 +16,7 @@
 #include "driver/gpio.h"
 #include "driver/i2c_master.h"
 #include "driver/spi_master.h"
+#include "esp_sleep.h"
 #include "esp_check.h"
 #include "esp_heap_caps.h"
 #include "esp_lcd_co5300.h"
@@ -28,6 +29,7 @@
 #include "freertos/task.h"
 
 #include "hal_board.h"
+#include "sdkconfig.h"
 #include "pp_lcd_bands.h"
 #include "pp_mem.h"
 
@@ -60,6 +62,34 @@ static const char *TAG = "hal";
 #define PMIC_VBAT_MV 0x22          /* 16-bit little-endian millivolts */
 #define PMIC_BTN_CFG1 0x49
 #define PMIC_SINGLE_RESET_DISABLE BIT(0)
+
+/* Power chip interrupt, for waking from light sleep on a power-key click (Muse board_m5stack_stopwatch.c, M5PM1 manual):
+ * the PM1's GPIO1 is wired to ESP32 GPIO12 and pulled low while an unmasked status bit is set. */
+#define PMIC_GPIO_OD 0x13
+#define PMIC_GPIO_FUNC0 0x16
+#define PMIC_IRQ_PIN BIT(1)           /* PM1 GPIO1 */
+#define PMIC_FUNC_GPIO1_MASK 0x0C
+#define PMIC_FUNC_GPIO1_IRQ 0x04      /* 01 = IRQ output */
+#define PMIC_IRQ_STATUS1 0x40
+#define PMIC_IRQ_STATUS3 0x42         /* power key events */
+#define PMIC_IRQ_MASK1 0x43
+#define PMIC_IRQ_MASK2 0x44
+#define PMIC_IRQ_MASK3 0x45
+#define PMIC_BTN_STATUS 0x48
+#define PMIC_BTN_PRESSED BIT(0)
+#define PMIC_IRQ_BTN_ALL 0x07
+#define PMIC_IRQ_BTN_WAKE BIT(1)      /* power-on event: stays masked */
+#define PMIC_IRQ_GPIO_ALL 0x1F
+#define PMIC_IRQ_SYS_ALL 0x3F
+#define PMIC_CLICK_DELAY_MASK 0x06
+#define PMIC_DBL_DELAY_MASK 0x60
+#define PMIC_DBL_DELAY_250MS 0x20
+
+#define KEY_A_GPIO GPIO_NUM_2         /* yellow, upper left */
+#define KEY_B_GPIO GPIO_NUM_1         /* blue, upper right */
+#define PMIC_IRQ_GPIO GPIO_NUM_12
+#define TP_REG_SLEEP 0xE5             /* 0x03: deep sleep until reset */
+#define WAKE_POLL_MS 1000             /* a held power key raises no interrupt: look at it this often */
 
 #define IOE_ADDR 0x4F
 #define IOE_MODE 0x03              /* 16 bits, IO1 in bit 0; 1 = output */
@@ -219,6 +249,8 @@ static void tp_read(lv_indev_t *indev, lv_indev_data_t *data)
     data->state = LV_INDEV_STATE_PRESSED;
 }
 
+static void power_start(void);
+
 lv_display_t *hal_display_start(void)
 {
     const spi_bus_config_t bus = CO5300_PANEL_BUS_QSPI_CONFIG(LCD_SCLK, LCD_D0, LCD_D1, LCD_D2, LCD_D3, LCD_CHUNK_BYTES);
@@ -271,6 +303,7 @@ lv_display_t *hal_display_start(void)
     lv_indev_set_display(touch, disp);
     lv_indev_set_read_cb(touch, tp_read);
     if (esp_lv_adapter_start() != ESP_OK) return NULL;
+    power_start();
     return disp;
 }
 
@@ -308,3 +341,155 @@ esp_err_t hal_read_battery(int *mv, int *pct)
     *pct = *mv < 2500 ? -1 : p < 0 ? 0 : p > 100 ? 100 : p;
     return ESP_OK;
 }
+
+/* ---------- screen off / wake ---------- */
+
+static bool s_screen_off;   /* the panel is asleep */
+
+static esp_err_t pmic_irq_clear(void)
+{
+    esp_err_t err = ESP_OK;
+    for (uint8_t reg = PMIC_IRQ_STATUS1; reg <= PMIC_IRQ_STATUS3; reg++) {
+        esp_err_t e = reg_write(s_pmic, reg, (uint8_t[]){ 0 }, 1);   /* writing 0 clears and releases the line */
+        err = err == ESP_OK ? e : err;
+    }
+    return err;
+}
+
+/* Only a power-key single/double click pulls GPIO12 low; everything else the PM1 could report is masked. */
+static esp_err_t pmic_irq_setup(void)
+{
+    ESP_RETURN_ON_ERROR(pmic_update(PMIC_IRQ_MASK1, PMIC_IRQ_GPIO_ALL, PMIC_IRQ_GPIO_ALL), TAG, "mask gpio irqs");
+    ESP_RETURN_ON_ERROR(pmic_update(PMIC_IRQ_MASK2, PMIC_IRQ_SYS_ALL, PMIC_IRQ_SYS_ALL), TAG, "mask system irqs");
+    ESP_RETURN_ON_ERROR(pmic_update(PMIC_IRQ_MASK3, PMIC_IRQ_BTN_ALL, PMIC_IRQ_BTN_WAKE), TAG, "unmask clicks");
+    ESP_RETURN_ON_ERROR(pmic_update(PMIC_BTN_CFG1, PMIC_CLICK_DELAY_MASK | PMIC_DBL_DELAY_MASK, PMIC_DBL_DELAY_250MS), TAG, "click timing");
+    ESP_RETURN_ON_ERROR(pmic_update(PMIC_GPIO_OD, PMIC_IRQ_PIN, PMIC_IRQ_PIN), TAG, "irq open drain");
+    ESP_RETURN_ON_ERROR(pmic_update(PMIC_GPIO_FUNC0, PMIC_FUNC_GPIO1_MASK, PMIC_FUNC_GPIO1_IRQ), TAG, "gpio1 irq");
+    return pmic_irq_clear();
+}
+
+#ifdef CONFIG_PP_LOW_POWER
+static TaskHandle_t s_power_task, s_waiter;
+static bool s_irq_ok;   /* the PM1 interrupt line is set up */
+
+/* A wake line reached the level armed in wait_for_key(). Level-triggered: off until armed again. */
+static void IRAM_ATTR on_wake_line(void *arg)
+{
+    gpio_intr_disable((gpio_num_t)(intptr_t)arg);
+    BaseType_t woken = pdFALSE;
+    if (s_waiter) vTaskNotifyGiveFromISR(s_waiter, &woken);
+    portYIELD_FROM_ISR(woken);
+}
+
+static bool key_down(void)
+{
+    if (gpio_get_level(KEY_A_GPIO) == 0 || gpio_get_level(KEY_B_GPIO) == 0) return true;
+    if (s_irq_ok && gpio_get_level(PMIC_IRQ_GPIO) == 0) {   /* a power-key click: take it and let the line go */
+        pmic_irq_clear();
+        return true;
+    }
+    uint8_t st;
+    return reg_read(s_pmic, PMIC_BTN_STATUS, &st, 1) == ESP_OK && (st & PMIC_BTN_PRESSED);   /* held key: no interrupt */
+}
+
+/* Light-sleeps (tickless idle) until a side key or the power key. */
+static void wait_for_key(void)
+{
+    const gpio_num_t lines[] = { KEY_A_GPIO, KEY_B_GPIO, PMIC_IRQ_GPIO };
+    int n = s_irq_ok ? 3 : 2;
+    s_waiter = xTaskGetCurrentTaskHandle();
+    while (!key_down()) {
+        esp_sleep_enable_gpio_wakeup();
+        for (int i = 0; i < n; i++) {
+            gpio_wakeup_enable(lines[i], GPIO_INTR_LOW_LEVEL);
+            gpio_intr_enable(lines[i]);
+        }
+        ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(WAKE_POLL_MS));
+        for (int i = 0; i < n; i++) {
+            gpio_intr_disable(lines[i]);
+            gpio_wakeup_disable(lines[i]);
+        }
+    }
+}
+
+static void touch_wake(void)   /* the CST820 sleeps until its reset line wakes it */
+{
+    ioe_set(IOE_TP_RST, false);
+    vTaskDelay(pdMS_TO_TICKS(10));
+    ioe_set(IOE_TP_RST, true);
+    vTaskDelay(pdMS_TO_TICKS(50));
+    reg_write(s_tp, TP_REG_NO_AUTO_SLEEP, (uint8_t[]){ 0x01 }, 1);
+}
+
+static void power_task(void *arg)
+{
+    for (;;) {
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);   /* hal_screen_off() */
+        ESP_LOGI(TAG, "screen off: UI paused, waiting for a key");
+        send_brightness(&(uint8_t){ 0 });
+        s_screen_off = true;
+        pp_lcd_bands_run(send_sleep, &(bool){ true });
+        vTaskDelay(pdMS_TO_TICKS(120));
+        esp_lv_adapter_pause(-1);
+        reg_write(s_tp, TP_REG_SLEEP, (uint8_t[]){ 0x03 }, 1);
+
+        wait_for_key();
+
+        ESP_LOGI(TAG, "key: waking");
+        touch_wake();
+        pp_lcd_bands_run(send_sleep, &(bool){ false });
+        vTaskDelay(pdMS_TO_TICKS(120));
+        s_screen_off = false;
+        esp_lv_adapter_resume();
+        if (esp_lv_adapter_lock(-1) == ESP_OK) {   /* count the key as activity, or the UI sleeps again at once */
+            lv_display_trigger_activity(NULL);
+            lv_obj_invalidate(lv_screen_active());
+            esp_lv_adapter_unlock();
+        }
+    }
+}
+
+/* Called once from hal_display_start(), after the touch chip is up. */
+static void power_start(void)
+{
+    const gpio_config_t io = {
+        .pin_bit_mask = BIT64(KEY_A_GPIO) | BIT64(KEY_B_GPIO) | BIT64(PMIC_IRQ_GPIO),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE,   /* keys and the open-drain PM1 line idle high */
+    };
+    gpio_config(&io);
+    esp_err_t e = gpio_install_isr_service(0);
+    if (e != ESP_OK && e != ESP_ERR_INVALID_STATE) ESP_LOGW(TAG, "gpio isr service: %s", esp_err_to_name(e));
+    const gpio_num_t lines[] = { KEY_A_GPIO, KEY_B_GPIO, PMIC_IRQ_GPIO };
+    for (int i = 0; i < 3; i++) {
+        gpio_isr_handler_add(lines[i], on_wake_line, (void *)(intptr_t)lines[i]);
+        gpio_intr_disable(lines[i]);
+    }
+    s_irq_ok = pmic_irq_setup() == ESP_OK;
+    if (!s_irq_ok) ESP_LOGW(TAG, "power key interrupt not set up: polling the power key every %d ms", WAKE_POLL_MS);
+    xTaskCreatePinnedToCore(power_task, "pp_power", 4096, NULL, 4, &s_power_task, 0);
+}
+
+void hal_screen_off(void) { if (s_power_task) xTaskNotifyGive(s_power_task); }
+void hal_screen_on(void) {}   /* the power task wakes the panel itself */
+
+#else   /* no low power: panel sleep only, touch wakes it via the UI */
+
+static void power_start(void) {}
+
+void hal_screen_off(void)
+{
+    if (s_screen_off) return;
+    s_screen_off = true;
+    hal_set_brightness(0);
+    hal_panel_sleep(true);
+}
+
+void hal_screen_on(void)
+{
+    if (!s_screen_off) return;
+    hal_panel_sleep(false);
+    s_screen_off = false;
+}
+
+#endif

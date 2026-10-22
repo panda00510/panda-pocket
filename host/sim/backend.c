@@ -8,6 +8,7 @@
 
 #include "bus.h"
 #include "hal_board.h"
+#include "lvgl.h"
 #include "nav.h"
 #include "wifi.h"
 
@@ -26,6 +27,24 @@ bool hal_lock(int timeout_ms)
 void hal_unlock(void) { pthread_mutex_unlock(&s_lvgl); }
 void hal_set_brightness(int pct) { printf("[sim] brightness %d%%\n", pct); }
 void hal_panel_sleep(bool sleep) { printf("[sim] panel %s\n", sleep ? "sleep" : "wake"); }
+/* Simulated low power: "off" for 1 s, then a pretend key press counts as activity (what the board does on wake). */
+static void *fake_wake(void *arg)
+{
+    usleep(1000000);
+    pthread_mutex_lock(&s_lvgl);
+    lv_display_trigger_activity(NULL);
+    pthread_mutex_unlock(&s_lvgl);
+    printf("[sim] key wake\n");
+    return NULL;
+}
+void hal_screen_off(void)
+{
+    printf("[sim] screen off\n");
+    pthread_t th;
+    pthread_create(&th, NULL, fake_wake, NULL);
+    pthread_detach(th);
+}
+void hal_screen_on(void) { printf("[sim] screen on\n"); }
 esp_err_t hal_read_battery(int *mv, int *pct) { *pct = s_batt_pct; *mv = 3300 + s_batt_pct * 9; return ESP_OK; }
 
 wifi_state_t wifi_state(void) { return WIFI_UP; }

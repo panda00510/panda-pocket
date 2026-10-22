@@ -14,4 +14,10 @@ void hal_unlock(void);
 void hal_set_brightness(int pct);   /* 0..100 */
 void hal_panel_sleep(bool sleep);
 /* mv/pct: pct is -1 when no cell is fitted. */
+/* Screen off. Returns at once; may finish asynchronously. With PP_LOW_POWER the UI is paused, the touch chip sleeps
+ * and the chip light-sleeps until a side key or the power key wakes everything again (touch cannot wake it: the
+ * CST820's interrupt line is not known). Without it only the panel sleeps and touch wakes via hal_screen_on(). */
+void hal_screen_off(void);
+/* Panel back on. Idempotent; no-op while a low-power wake is already doing it. Brightness is the caller's job. */
+void hal_screen_on(void);
 esp_err_t hal_read_battery(int *mv, int *pct);

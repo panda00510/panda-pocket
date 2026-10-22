@@ -22,6 +22,13 @@ menu "Panda Pocket"
         string "Default Wi-Fi password (dev only)"
         default ""
 
+    config PP_LOW_POWER
+        bool "Low power: light sleep while the screen is off"
+        default y
+        help
+            Screen off pauses the UI and light-sleeps until a side key or the power key.
+            Touch cannot wake it. Off: only the panel sleeps and touch wakes it.
+
     config PP_SCREEN_OFF_S
         int "Screen off after idle seconds"
         range 5 600

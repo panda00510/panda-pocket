@@ -4,4 +4,6 @@
 #define CONFIG_PP_ONEMAP_TOKEN ""
 #define CONFIG_PP_WIFI_SSID ""
 #define CONFIG_PP_WIFI_PASSWORD ""
+#ifndef CONFIG_PP_SCREEN_OFF_S
 #define CONFIG_PP_SCREEN_OFF_S 30
+#endif

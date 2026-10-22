@@ -759,17 +759,26 @@ static void home_tick(lv_timer_t *t)
     lv_label_set_text(s_wifi, wifi_state() == WIFI_UP ? LV_SYMBOL_WIFI : wifi_state() == WIFI_CONNECTING ? LV_SYMBOL_REFRESH : "-");
 }
 
+#define DIM_PCT 15   /* before the screen goes off: a cheap warning, and a saving on AMOLED */
+static bool s_dim;
+
+static int dim_level(void) { return s_set->brightness < DIM_PCT ? s_set->brightness : DIM_PCT; }
+
+/* Idle: dim at half the timeout, then off. Any activity restores. With PP_LOW_POWER this timer stops while the
+ * screen is off (LVGL is paused) and the board wakes on a key; the first tick after that sees fresh activity. */
 static void sleep_tick(lv_timer_t *t)
 {
     uint32_t idle = lv_display_get_inactive_time(NULL);
-    if (!s_asleep && idle > CONFIG_PP_SCREEN_OFF_S * 1000u) {
+    uint32_t off_ms = CONFIG_PP_SCREEN_OFF_S * 1000u;
+    if (idle < 500) {
+        if (s_asleep) { hal_screen_on(); s_asleep = false; s_dim = false; hal_set_brightness(s_set->brightness); }
+        else if (s_dim) { s_dim = false; hal_set_brightness(s_set->brightness); }
+    } else if (!s_asleep && idle > off_ms) {
         s_asleep = true;
-        hal_set_brightness(0);
-        hal_panel_sleep(true);
-    } else if (s_asleep && idle < 500) {   /* a touch while off wakes it */
-        hal_panel_sleep(false);
-        hal_set_brightness(s_set->brightness);
-        s_asleep = false;
+        hal_screen_off();
+    } else if (!s_asleep && !s_dim && idle > off_ms / 2) {
+        s_dim = true;
+        hal_set_brightness(dim_level());
     }
 }
 

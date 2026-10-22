@@ -37,3 +37,16 @@ CONFIG_LV_THEME_DEFAULT_DARK=y
 
 CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
 CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=y
+
+# Low power (see PP_LOW_POWER): DFS + automatic light sleep. Values from Muse's StopWatch overlay
+# (devices/sdkconfig.muse-m5stack-stopwatch), including its reasons:
+CONFIG_PM_ENABLE=y
+CONFIG_FREERTOS_USE_TICKLESS_IDLE=y
+# No auto light sleep while USB-Serial-JTAG is connected, or the serial port drops off the host (flash/monitor).
+CONFIG_USJ_NO_AUTO_LS_ON_CONNECTION=y
+# The CPU stays powered in light sleep: saving its state takes ~8.5 KB of internal RAM, more than Wi-Fi can spare.
+CONFIG_PM_POWER_DOWN_CPU_IN_LIGHT_SLEEP=n
+# Pins must keep their state (and pull-ups) in light sleep: the wake keys and the PM1 interrupt line (GPIO12)
+# rely on internal pull-ups. These two would float every pin.
+CONFIG_ESP_SLEEP_GPIO_RESET_WORKAROUND=n
+CONFIG_PM_SLP_DISABLE_GPIO=n
